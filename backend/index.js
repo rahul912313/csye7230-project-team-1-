@@ -1,8 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
-const userRoutes = require('./routes/userRoutes');
-const adminRoutes = require('./routes/adminRoutes');
+const rootRouter = require('./routes/index');
 const { errorHandler, notFound } = require('./middlewares/errorMiddleware');
 
 const app = express();
@@ -33,18 +32,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Database connection status endpoint
-app.get('/api/db-status', (req, res) => {
-  const stats = db.getStats();
-  res.json({
-    connected: stats.connected,
-    details: stats
-  });
-});
-
 // API Routes
-app.use('/api/users', userRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api', rootRouter);
 
 // Error handling - must be last
 app.use(notFound);
@@ -62,7 +51,7 @@ const startServer = async () => {
       console.log(`🚀 QuickRent Backend Server running on port ${PORT}`);
       console.log(`📍 API: http://localhost:${PORT}`);
       console.log(`💚 Health Check: http://localhost:${PORT}/health`);
-      console.log(`👤 User API: http://localhost:${PORT}/api/users`);
+      console.log(`👤 User API: http://localhost:${PORT}/api/user`);
       console.log(`🔐 Admin API: http://localhost:${PORT}/api/admin`);
     });
   } catch (error) {

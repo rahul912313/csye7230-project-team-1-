@@ -1,5 +1,8 @@
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const UserRepository = require("../repositories/UserRepository");
 const User = require("../models/user");
+const Admin = require("../models/admin");
 
 /**
  * AdminService - Service Layer for Admin Operations
@@ -9,160 +12,109 @@ const User = require("../models/user");
  * QuickRent Vehicle Rental Platform
  */
 class AdminService {
-  constructor(userModel) {
+  constructor(adminModel, userModel, bookingModel) {
+    this.adminModel = adminModel;
     this.userModel = userModel;
+    this.bookingModel = bookingModel;
     this.userRepository = new UserRepository(userModel);
   }
 
   /**
-   * Get all users with pagination
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>} Paginated users list
+   * Create a new admin
+   * @param {Object} adminData - Admin data
+   * @returns {Promise<Object>} Created admin
    */
-  async getAllUsers(options = {}) {
+  async createAdmin(adminData) {
     try {
-      const { page = 1, limit = 10, sortBy = "createdAt", order = "desc" } = options;
-
-      const sort = this.userRepository.buildSort(sortBy, order);
-      const result = await this.userRepository.findWithPagination({}, page, limit, sort);
-
-      // Remove passwords from all users
-      const usersWithoutPassword = result.data.map((user) => {
-        const userObj = user.toObject();
-        delete userObj.password;
-        return userObj;
-      });
-
-      return {
-        users: usersWithoutPassword,
-        pagination: result.pagination,
-      };
-    } catch (e) {
-      console.error("Error getting all users:", e.message);
-      throw new Error(`Error getting all users: ${e.message}`);
-    }
-  }
-
-  /**
-   * Get user by ID
-   * @param {String} userId - User ID
-   * @returns {Promise<Object>} User details
-   */
-  async getUserById(userId) {
-    try {
-      const user = await this.userRepository.findByIdWithoutPassword(userId);
-      if (!user) {
-        throw new Error("User not found");
-      }
-      return user;
-    } catch (e) {
-      console.error("Error getting user by ID:", e.message);
-      throw new Error(`Error getting user by ID: ${e.message}`);
-    }
-  }
-
-  /**
-   * Block or unblock user
-   * @param {String} userId - User ID
-   * @param {Boolean} blockStatus - True to block, false to unblock
-   * @returns {Promise<Object>} Updated user status
-   */
-  async toggleUserBlock(userId, blockStatus) {
-    try {
-      const updatedUser = await this.userRepository.update(userId, {
-        isBlocked: blockStatus,
-      });
-
-      if (!updatedUser) {
-        throw new Error("User not found");
+      // Check if admin exists
+      const existingAdmin = await this.adminModel.findOne({ email: adminData.email });
+      if (existingAdmin) {
+        throw new Error("Admin already exists with this email");
       }
 
-      return {
-        message: blockStatus ? "User blocked successfully" : "User unblocked successfully",
-        userId: updatedUser._id,
-        isBlocked: updatedUser.isBlocked,
-      };
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(adminData.password, salt);
+
+      // Create admin and set role as "admin"
+      const admin = await this.adminModel.create({
+        ...adminData,
+        password: hashedPassword,
+        role: "admin",
+      });
+
+      return admin;
     } catch (e) {
-      console.error("Error toggling user block:", e.message);
-      throw new Error(`Error toggling user block: ${e.message}`);
+      console.error("Error creating admin: ", e.message);
+      throw new Error(`Error creating admin: ${e.message}`);
     }
   }
 
   /**
-   * Delete user
-   * @param {String} userId - User ID
-   * @returns {Promise<Object>} Deletion confirmation
+   * Login admin
+   * @param {String} email - Admin email
+   * @param {String} password - Admin password
+   * @returns {Promise<Object>} Admin and token
    */
-  async deleteUser(userId) {
+  async loginAdmin(email, password) {
     try {
-      const deletedUser = await this.userRepository.delete(userId);
-      if (!deletedUser) {
-        throw new Error("User not found");
+      // Find admin
+      const admin = await this.adminModel.findOne({ email }).select("+password");
+      if (!admin) {
+        throw new Error("Invalid credentials");
       }
 
-      return {
-        message: "User deleted successfully",
-        userId: deletedUser._id,
-      };
+      // Check password
+      const isValidPassword = await bcrypt.compare(password, admin.password);
+      if (!isValidPassword) {
+        throw new Error("Invalid credentials");
+      }
+
+      // Generate token
+      const token = jwt.sign(
+        { userId: admin._id, role: admin.role, email: admin.email },
+        process.env.JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      return { admin, token };
     } catch (e) {
-      console.error("Error deleting user:", e.message);
-      throw new Error(`Error deleting user: ${e.message}`);
+      console.error("Admin login failed: ", e.message);
+      throw new Error(`Admin login failed: ${e.message}`);
     }
   }
 
   /**
-   * Get user statistics
-   * @returns {Promise<Object>} User statistics
+   * Get all users
+   * @returns {Promise<Array>} List of users
    */
-  async getUserStats() {
+  async getAllUsers() {
     try {
-      const totalUsers = await this.userRepository.count({ role: "user" });
-      const totalAdmins = await this.userRepository.count({ role: "admin" });
-      const activeUsers = await this.userRepository.count({
-        role: "user",
-        isBlocked: { $ne: true },
-      });
-
-      return {
-        totalUsers,
-        totalAdmins,
-        activeUsers,
-        blockedUsers: totalUsers - activeUsers,
-      };
+      const users = await this.userModel.find({}).select("-password");
+      return users;
     } catch (e) {
-      console.error("Error getting user stats:", e.message);
-      throw new Error(`Error getting user stats: ${e.message}`);
+      console.error("Error fetching all users: ", e.message);
+      throw new Error(`Error fetching users: ${e.message}`);
     }
   }
 
   /**
-   * Search users by name or email
-   * @param {String} searchTerm - Search term
-   * @param {Object} options - Pagination options
-   * @returns {Promise<Object>} Search results
+   * Get all bookings (placeholder for Saumya's implementation)
+   * @returns {Promise<Array>} List of bookings
    */
-  async searchUsers(searchTerm, options = {}) {
+  async getAllBookings() {
     try {
-      const { page = 1, limit = 10 } = options;
-
-      const searchFilter = this.userRepository.buildTextSearch(searchTerm, ["name", "email"]);
-      const sort = { createdAt: -1 };
-
-      const result = await this.userRepository.findWithPagination(searchFilter, page, limit, sort);
-
-      const usersWithoutPassword = result.data.map((user) => {
-        const userObj = user.toObject();
-        delete userObj.password;
-        return userObj;
-      });
-
-      return {
-        users: usersWithoutPassword,
-        pagination: result.pagination,
-      };
+      // This will be implemented by Saumya
+      if (!this.bookingModel) {
+        return [];
+      }
+      const bookings = await this.bookingModel.find()
+        .populate("userId", "name email")
+        .sort({ createdAt: -1 });
+      return bookings;
     } catch (e) {
-      console.error("Error searching users:", e.message);
-      throw new Error(`Error searching users: ${e.message}`);
+      console.error("Error fetching all bookings: ", e.message);
+      throw new Error(`Error fetching bookings: ${e.message}`);
     }
   }
 }
