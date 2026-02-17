@@ -116,7 +116,81 @@ const loginUser = async (credentials) => {
   };
 };
 
+/**
+ * Get user profile by ID
+ * @param {String} userId - User ID
+ * @returns {Promise<Object>} User profile without password
+ */
+const getUserProfile = async (userId) => {
+  const user = await userRepository.findByIdWithoutPassword(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    driverLicense: user.driverLicense,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+};
+
+/**
+ * Update user profile
+ * @param {String} userId - User ID
+ * @param {Object} updateData - Data to update
+ * @returns {Promise<Object>} Updated user profile
+ */
+const updateUserProfile = async (userId, updateData) => {
+  // Don't allow updating sensitive fields
+  const allowedFields = ["name", "firebaseToken"];
+  const filteredData = {};
+
+  allowedFields.forEach((field) => {
+    if (updateData[field] !== undefined) {
+      filteredData[field] = updateData[field];
+    }
+  });
+
+  const updatedUser = await userRepository.update(userId, filteredData);
+  if (!updatedUser) {
+    throw new Error("User not found");
+  }
+
+  return {
+    id: updatedUser._id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    driverLicense: updatedUser.driverLicense,
+    role: updatedUser.role,
+    updatedAt: updatedUser.updatedAt,
+  };
+};
+
+/**
+ * Delete user account
+ * @param {String} userId - User ID
+ * @returns {Promise<Object>} Deletion confirmation
+ */
+const deleteUserAccount = async (userId) => {
+  const deletedUser = await userRepository.delete(userId);
+  if (!deletedUser) {
+    throw new Error("User not found");
+  }
+
+  return {
+    message: "User account deleted successfully",
+    userId: deletedUser._id,
+  };
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  getUserProfile,
+  updateUserProfile,
+  deleteUserAccount,
 };
