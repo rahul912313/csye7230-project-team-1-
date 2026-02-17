@@ -1,16 +1,14 @@
-const {
-  getAllUsers,
-  getUserById,
-  toggleUserBlock,
-  deleteUser,
-  getUserStats,
-  searchUsers,
-} = require("../services/adminService");
+const AdminService = require("../services/adminService");
+const User = require("../models/user");
 
 /**
  * Admin Controller for QuickRent
  * Handles HTTP requests for admin operations
+ * Uses dependency injection with AdminService
  */
+
+// Initialize the service with dependency injection
+const adminService = new AdminService(User);
 
 /**
  * Get all users
@@ -21,7 +19,7 @@ const getUsers = async (req, res) => {
   try {
     const { page, limit, sortBy, order } = req.query;
 
-    const result = await getAllUsers({
+    const result = await adminService.getAllUsers({
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 10,
       sortBy,
@@ -48,7 +46,7 @@ const getUsers = async (req, res) => {
 const getUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await getUserById(id);
+    const user = await adminService.getUserById(id);
 
     res.status(200).json({
       success: true,
@@ -70,7 +68,7 @@ const getUser = async (req, res) => {
 const blockUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await toggleUserBlock(id, true);
+    const result = await adminService.toggleUserBlock(id, true);
 
     res.status(200).json({
       success: true,
@@ -93,7 +91,7 @@ const blockUser = async (req, res) => {
 const unblockUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await toggleUserBlock(id, false);
+    const result = await adminService.toggleUserBlock(id, false);
 
     res.status(200).json({
       success: true,
@@ -116,7 +114,7 @@ const unblockUser = async (req, res) => {
 const deleteUserById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await deleteUser(id);
+    const result = await adminService.deleteUser(id);
 
     res.status(200).json({
       success: true,
@@ -137,7 +135,7 @@ const deleteUserById = async (req, res) => {
  */
 const getStats = async (req, res) => {
   try {
-    const stats = await getUserStats();
+    const stats = await adminService.getUserStats();
 
     res.status(200).json({
       success: true,
@@ -167,7 +165,7 @@ const searchUsersController = async (req, res) => {
       });
     }
 
-    const result = await searchUsers(q, {
+    const result = await adminService.searchUsers(q, {
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 10,
     });

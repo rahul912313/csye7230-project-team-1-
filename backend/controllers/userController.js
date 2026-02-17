@@ -1,37 +1,82 @@
-const { registerUser } = require("../services/userService");
+const UserService = require("../services/userService");
+const User = require("../models/user");
+const { z } = require("zod");
 
 /**
  * User Controller for QuickRent
  * Handles HTTP requests for user operations
+ * Uses Zod for input validation
  */
+
+// Initialize the service with dependency injection
+const userService = new UserService(User);
+
+// Validation schemas
+const signupSchema = z.object({
+  name: z.string().trim().min(1, { message: "Name is required" }),
+  email: z
+    .string()
+    .email({ message: "Invalid email address" })
+    .min(1, { message: "Email is required" }),
+  password: z
+    .string()
+    .min(6, { message: "Password must be at least 6 characters long" }),
+  driverLicense: z
+    .string()
+    .min(6, { message: "Driver license must be at least 6 characters long" })
+    .max(15, { message: "Driver license must not exceed 15 characters" })
+    .regex(/^[A-Za-z0-9]+$/, {
+      message: "Driver license must be alphanumeric",
+    }),
+});
+
+const loginSchema = z.object({
+  email: z
+    .string()
+    .email({ message: "Invalid email address" })
+    .min(1, { message: "Email is required" }),
+  password: z
+    .string()
+    .min(1, { message: "Password is required" }),
+});
 
 /**
  * Register a new user
  * @route POST /api/users/register
  * @access Public
  */
-const register = async (req, res) => {
+const registerUser = async (req, res) => {
   try {
-    const { name, email, password, driverLicense } = req.body;
+    const validationResult = signupSchema.safeParse(req.body);
 
-    // Validate required fields
-    if (!name || !email || !password || !driverLicense) {
+    if (!validationResult.success) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required: name, email, password, driverLicense",
+        message: "Validation error",
+        errors: validationResult.error.errors,
       });
     }
 
-    // Register user
-    const result = await registerUser({ name, email, password, driverLicense });
+    // Call the service layer to create the user
+    const { user, token } = await userService.createUser(validationResult.data);
 
     res.status(201).json({
       success: true,
       message: "User registered successfully",
-      data: result,
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          driverLicense: user.driverLicense,
+        },
+      },
     });
   } catch (error) {
-    res.status(400).json({
+    console.error("Error registering user:", error.message);
+    res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -43,26 +88,34 @@ const register = async (req, res) => {
  * @route POST /api/users/login
  * @access Public
  */
-const login = async (req, res) => {
+const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const validationResult = loginSchema.safeParse(req.body);
 
-    // Validate required fields
-    if (!email || !password) {
+    if (!validationResult.success) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "Validation error",
+        errors: validationResult.error.errors,
       });
     }
 
-    // Login user
-    const { loginUser } = require("../services/userService");
-    const result = await loginUser({ email, password });
+    const { email, password } = validationResult.data;
+
+    const { user, token } = await userService.loginUser(email, password);
 
     res.status(200).json({
       success: true,
       message: "Login successful",
-      data: result,
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      },
     });
   } catch (error) {
     res.status(401).json({
@@ -77,19 +130,34 @@ const login = async (req, res) => {
  * @route GET /api/users/profile
  * @access Private
  */
-const getProfile = async (req, res) => {
+const getUserProfile = async (req, res) => {
   try {
     const userId = req.userId; // Set by authMiddleware
 
-    const { getUserProfile } = require("../services/userService");
-    const profile = await getUserProfile(userId);
+    const user = await userService.getUserById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     res.status(200).json({
       success: true,
-      data: profile,
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        driverLicense: user.driverLicense,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     });
   } catch (error) {
-    res.status(404).json({
+    console.error("Error fetching user profile:", error.message);
+    res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -101,21 +169,48 @@ const getProfile = async (req, res) => {
  * @route PUT /api/users/profile
  * @access Private
  */
-const updateProfile = async (req, res) => {
+const updateUserProfile = async (req, res) => {
+  const updateUserSchema = signupSchema.partial();
+
   try {
     const userId = req.userId; // Set by authMiddleware
-    const updateData = req.body;
 
-    const { updateUserProfile } = require("../services/userService");
-    const updatedProfile = await updateUserProfile(userId, updateData);
+    const validationResult = updateUserSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors: validationResult.error.errors,
+      });
+    }
+
+    const validatedData = validationResult.data;
+
+    // Call the service layer to update the user
+    const updatedUser = await userService.updateUser(userId, validatedData);
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedProfile,
+      data: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        updatedAt: updatedUser.updatedAt,
+      },
     });
   } catch (error) {
-    res.status(400).json({
+    console.error("Error updating user profile:", error.message);
+    res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -131,15 +226,62 @@ const deleteAccount = async (req, res) => {
   try {
     const userId = req.userId; // Set by authMiddleware
 
-    const { deleteUserAccount } = require("../services/userService");
-    const result = await deleteUserAccount(userId);
+    const result = await userService.getUserById(userId);
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Delete from repository
+    await User.findByIdAndDelete(userId);
 
     res.status(200).json({
       success: true,
-      message: result.message,
+      message: "Account deleted successfully",
     });
   } catch (error) {
-    res.status(400).json({
+    console.error("Error deleting account:", error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * Store Firebase token
+ * @route POST /api/users/firebase-token
+ * @access Private
+ */
+const storeFirebaseToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const userId = req.userId; // Set by authMiddleware
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Token is required",
+      });
+    }
+
+    const user = await userService.updateFirebaseToken(userId, token);
+
+    if (user) {
+      res.status(200).json({
+        success: true,
+        message: "Firebase token saved successfully",
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -147,9 +289,10 @@ const deleteAccount = async (req, res) => {
 };
 
 module.exports = {
-  register,
-  login,
-  getProfile,
-  updateProfile,
+  registerUser,
+  loginUser,
+  getUserProfile,
+  updateUserProfile,
   deleteAccount,
+  storeFirebaseToken,
 };

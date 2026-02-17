@@ -1,196 +1,178 @@
-const User = require("../models/user");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const UserRepository = require("../repositories/UserRepository");
-const { hashPassword } = require("../utils/passwordUtils");
-const { generateToken } = require("../utils/jwtUtils");
+const User = require("../models/user");
 
 /**
- * User Service for QuickRent
- * Handles user registration, login, and profile management
+ * UserService - Service Layer for User Management
+ * Implements business logic for user operations
+ * Uses Dependency Injection for better testability and modularity
+ * 
+ * QuickRent Vehicle Rental Platform
  */
-
-// Initialize repository
-const userRepository = new UserRepository(User);
-
-/**
- * Register a new user
- * @param {Object} userData - User registration data
- * @param {String} userData.name - User's full name
- * @param {String} userData.email - User's email
- * @param {String} userData.password - User's password (plain text)
- * @param {String} userData.driverLicense - User's driver license number
- * @returns {Promise<Object>} Created user and token
- */
-const registerUser = async (userData) => {
-  const { name, email, password, driverLicense } = userData;
-
-  // Check if user with email already exists
-  const existingUserByEmail = await userRepository.findByEmail(email);
-  if (existingUserByEmail) {
-    throw new Error("User with this email already exists");
+class UserService {
+  constructor(userModel) {
+    this.userModel = userModel;
+    this.userRepository = new UserRepository(userModel);
   }
 
-  // Check if user with driver license already exists
-  const existingUserByLicense = await userRepository.findByDriverLicense(driverLicense);
-  if (existingUserByLicense) {
-    throw new Error("User with this driver license already exists");
-  }
+  /**
+   * Create a new user
+   * @param {Object} userData - User data
+   * @returns {Promise<Object>} Created user and token
+   */
+  async createUser(userData) {
+    try {
+      // Check if user exists by email
+      const existingUser = await this.userRepository.findByEmail(userData.email);
+      if (existingUser) {
+        throw new Error("User already exists with this email");
+      }
 
-  // Hash password
-  const hashedPassword = await hashPassword(password);
+      // Check if user exists by driver license
+      const existingLicense = await this.userRepository.findByDriverLicense(userData.driverLicense);
+      if (existingLicense) {
+        throw new Error("Driver license already registered");
+      }
 
-  // Create user
-  const newUser = await userRepository.create({
-    name,
-    email,
-    password: hashedPassword,
-    driverLicense,
-    role: "user", // Default role
-  });
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(userData.password, salt);
 
-  // Generate JWT token
-  const token = generateToken({
-    userId: newUser._id,
-    email: newUser.email,
-    role: newUser.role,
-  });
+      const role = "user";
 
-  // Return user without password
-  const userResponse = {
-    id: newUser._id,
-    name: newUser.name,
-    email: newUser.email,
-    driverLicense: newUser.driverLicense,
-    role: newUser.role,
-    createdAt: newUser.createdAt,
-  };
+      // Create user
+      const user = await this.userRepository.create({
+        ...userData,
+        password: hashedPassword,
+        role: role,
+      });
 
-  return {
-    user: userResponse,
-    token,
-  };
-};
+      // Generate token with userId and role
+      const token = jwt.sign(
+        { userId: user._id, role: user.role, email: user.email },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "24h",
+        }
+      );
 
-/**
- * Login user
- * @param {Object} credentials - Login credentials
- * @param {String} credentials.email - User's email
- * @param {String} credentials.password - User's password (plain text)
- * @returns {Promise<Object>} User and token
- */
-const loginUser = async (credentials) => {
-  const { email, password } = credentials;
-
-  // Find user by email (with password)
-  const user = await userRepository.findByEmailWithPassword(email);
-  if (!user) {
-    throw new Error("Invalid email or password");
-  }
-
-  // Verify password
-  const { comparePassword } = require("../utils/passwordUtils");
-  const isPasswordValid = await comparePassword(password, user.password);
-  if (!isPasswordValid) {
-    throw new Error("Invalid email or password");
-  }
-
-  // Generate JWT token
-  const token = generateToken({
-    userId: user._id,
-    email: user.email,
-    role: user.role,
-  });
-
-  // Return user without password
-  const userResponse = {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    driverLicense: user.driverLicense,
-    role: user.role,
-    createdAt: user.createdAt,
-  };
-
-  return {
-    user: userResponse,
-    token,
-  };
-};
-
-/**
- * Get user profile by ID
- * @param {String} userId - User ID
- * @returns {Promise<Object>} User profile without password
- */
-const getUserProfile = async (userId) => {
-  const user = await userRepository.findByIdWithoutPassword(userId);
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  return {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    driverLicense: user.driverLicense,
-    role: user.role,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  };
-};
-
-/**
- * Update user profile
- * @param {String} userId - User ID
- * @param {Object} updateData - Data to update
- * @returns {Promise<Object>} Updated user profile
- */
-const updateUserProfile = async (userId, updateData) => {
-  // Don't allow updating sensitive fields
-  const allowedFields = ["name", "firebaseToken"];
-  const filteredData = {};
-
-  allowedFields.forEach((field) => {
-    if (updateData[field] !== undefined) {
-      filteredData[field] = updateData[field];
+      return { user, token };
+    } catch (e) {
+      console.error("Error creating user: ", e.message);
+      throw new Error(`Error creating user: ${e.message}`);
     }
-  });
-
-  const updatedUser = await userRepository.update(userId, filteredData);
-  if (!updatedUser) {
-    throw new Error("User not found");
   }
 
-  return {
-    id: updatedUser._id,
-    name: updatedUser.name,
-    email: updatedUser.email,
-    driverLicense: updatedUser.driverLicense,
-    role: updatedUser.role,
-    updatedAt: updatedUser.updatedAt,
-  };
-};
+  /**
+   * Login user
+   * @param {String} email - User email
+   * @param {String} password - User password
+   * @returns {Promise<Object>} User and token
+   */
+  async loginUser(email, password) {
+    try {
+      // Find user with password
+      const user = await this.userRepository.findByEmailWithPassword(email);
+      if (!user) {
+        throw new Error("User not found");
+      }
 
-/**
- * Delete user account
- * @param {String} userId - User ID
- * @returns {Promise<Object>} Deletion confirmation
- */
-const deleteUserAccount = async (userId) => {
-  const deletedUser = await userRepository.delete(userId);
-  if (!deletedUser) {
-    throw new Error("User not found");
+      // Check password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        throw new Error("Invalid credentials");
+      }
+
+      // Generate token with userId and role
+      const token = jwt.sign(
+        { userId: user._id, role: user.role, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      return { user, token };
+    } catch (e) {
+      console.error("Login failed: ", e.message);
+      throw new Error(`Login failed: ${e.message}`);
+    }
   }
 
-  return {
-    message: "User account deleted successfully",
-    userId: deletedUser._id,
-  };
-};
+  /**
+   * Get user by ID
+   * @param {String} userId - User ID
+   * @returns {Promise<Object>} User object
+   */
+  async getUserById(userId) {
+    try {
+      const user = await this.userRepository.findByIdWithoutPassword(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+      return user;
+    } catch (e) {
+      console.error(`Error fetching user with id ${userId}: `, e.message);
+      throw new Error(`Error fetching user: ${e.message}`);
+    }
+  }
 
-module.exports = {
-  registerUser,
-  loginUser,
-  getUserProfile,
-  updateUserProfile,
-  deleteUserAccount,
-};
+  /**
+   * Update user
+   * @param {String} userId - User ID
+   * @param {Object} updateData - Data to update
+   * @returns {Promise<Object>} Updated user
+   */
+  async updateUser(userId, updateData) {
+    try {
+      // If updating email, check if it exists and is not being used by another user
+      if (updateData.email) {
+        const existingUser = await this.userModel.findOne({
+          email: updateData.email,
+          _id: { $ne: userId },
+        });
+        if (existingUser) {
+          throw new Error("Email already in use");
+        }
+      }
+
+      // If updating password, hash it
+      if (updateData.password) {
+        const salt = await bcrypt.genSalt(10);
+        updateData.password = await bcrypt.hash(updateData.password, salt);
+      }
+
+      // Update user data
+      const user = await this.userRepository.update(
+        userId,
+        updateData,
+        { new: true, runValidators: true }
+      );
+
+      return user;
+    } catch (e) {
+      console.error(`Error updating user: `, e.message);
+      throw new Error(`Error updating user: ${e.message}`);
+    }
+  }
+
+  /**
+   * Update Firebase token
+   * @param {String} userId - User ID
+   * @param {String} token - Firebase token
+   * @returns {Promise<Object>} Updated user
+   */
+  async updateFirebaseToken(userId, token) {
+    try {
+      const user = await this.userRepository.updateFirebaseToken(userId, token);
+      if (!user) {
+        throw new Error("User not found");
+      }
+      return user;
+    } catch (e) {
+      console.error("Error updating Firebase token:", e.message);
+      throw new Error(`Error updating Firebase token: ${e.message}`);
+    }
+  }
+}
+
+module.exports = UserService;
