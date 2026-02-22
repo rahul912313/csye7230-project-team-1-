@@ -1,15 +1,11 @@
 name: Backend CI
 
 on:
-  push:
-    branches: [ main, backend, backend-* ]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
 
 jobs:
   test:
@@ -28,18 +24,14 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Setup Node.js ${{ matrix.node-version }}
+    - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '20.x'
         cache: 'npm'
         cache-dependency-path: backend/package-lock.json
 
@@ -61,7 +53,6 @@ jobs:
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
-      if: matrix.node-version == '20.x'
       with:
         files: ./backend/coverage/lcov.info
         flags: backend
