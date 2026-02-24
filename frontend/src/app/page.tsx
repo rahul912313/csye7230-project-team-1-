@@ -1,22 +1,40 @@
-export default function Home() {
+"use client";
+
+import { WelcomeSection } from "@/components/dashboard/Welcome";
+import { VehicleTypes } from "@/components/dashboard/VehicleTypes";
+import { WhyChooseUs } from "@/components/dashboard/WhyChooseUs";
+import { TeamSection } from "@/components/dashboard/TeamSection";
+import { ChatbotButton } from "@/components/dashboard/Chatbot";
+import Footer from "@/components/layout/Footer";
+import api from "@/lib/axios";
+import { useState, useEffect } from "react";
+// import { QuickBook } from "@/components/dashboard/QuickBook";
+// import { Card } from "@nextui-org/react";
+
+export default function DashboardPage() {
+  const [name, setName] = useState<string>("");
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const response = await api.get("/user");
+        setName(response.data.data.name);
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      }
+    };
+
+    fetchUserName();
+  }, []);
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="text-center">
-        <h1 className="text-6xl font-bold mb-4">
-          Welcome to <span className="text-blue-600">QuickRent</span>
-        </h1>
-        <p className="text-xl text-gray-600 mb-8">
-          Your trusted vehicle rental platform
-        </p>
-        <div className="flex gap-4 justify-center">
-          <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
-            Browse Vehicles
-          </button>
-          <button className="border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg hover:bg-blue-50 transition">
-            Sign Up
-          </button>
-        </div>
-      </div>
-    </main>
+    <div className="min-h-screen">
+      <WelcomeSection userName={name} />
+      {/* <QuickBook /> */}
+      <VehicleTypes />
+      <WhyChooseUs />
+      <TeamSection />
+      <ChatbotButton />
+      <Footer />
+    </div>
   );
 }

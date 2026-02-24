@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "QuickRent - Vehicle Rental Platform",
-  description: "Rent vehicles quickly and easily with QuickRent",
+  title: "GoHaul",
+  description: "Vehicle Rental Platform",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
