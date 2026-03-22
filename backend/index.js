@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
+const rootRouter = require('./routes/index');
+const { errorHandler, notFound } = require('./middlewares/errorMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,14 +32,12 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Database connection status endpoint
-app.get('/api/db-status', (req, res) => {
-  const stats = db.getStats();
-  res.json({
-    connected: stats.connected,
-    details: stats
-  });
-});
+// API Routes
+app.use('/api', rootRouter);
+
+// Error handling - must be last
+app.use(notFound);
+app.use(errorHandler);
 
 // Start server
 const startServer = async () => {
@@ -51,6 +51,8 @@ const startServer = async () => {
       console.log(`🚀 QuickRent Backend Server running on port ${PORT}`);
       console.log(`📍 API: http://localhost:${PORT}`);
       console.log(`💚 Health Check: http://localhost:${PORT}/health`);
+      console.log(`👤 User API: http://localhost:${PORT}/api/user`);
+      console.log(`🔐 Admin API: http://localhost:${PORT}/api/admin`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
