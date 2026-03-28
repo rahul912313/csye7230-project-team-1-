@@ -37,7 +37,7 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "👋 Hi! I'm your GoHaul assistant. I can help you with:\n\n• Booking vehicles\n• Pricing & payments\n• Finding vehicles near you\n• Cancellation policies\n• Vehicle recommendations\n\nWhat would you like to know?",
+      content: "👋 Hi! I'm your QUICKRENT assistant. I can help you with:\n\n• Booking vehicles\n• Pricing & payments\n• Finding vehicles near you\n• Cancellation policies\n• Vehicle recommendations\n\nWhat would you like to know?",
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -169,7 +169,7 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
                   <span className="text-2xl">🤖</span>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold drop-shadow-lg">GoHaul Assistant</h3>
+                  <h3 className="text-xl font-bold drop-shadow-lg">QUICKRENT Assistant</h3>
                   <p className="text-sm text-white/90 drop-shadow">Ask me anything about vehicle rentals</p>
                 </div>
               </div>

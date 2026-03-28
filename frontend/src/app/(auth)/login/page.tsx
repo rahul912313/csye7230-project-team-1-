@@ -61,7 +61,7 @@ export default function LoginPage() {
         <CardHeader className="flex flex-col gap-1 pt-8 px-8">
           <h1 className="text-2xl font-bold text-center">Welcome Back</h1>
           <p className="text-sm text-default-500 text-center">
-            Log in to your GoHaul account
+            Log in to your QUICKRENT account
           </p>
         </CardHeader>
 

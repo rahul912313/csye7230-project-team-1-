@@ -77,7 +77,7 @@ export default function SignupPage() {
         <CardHeader className="flex flex-col gap-1 pt-8 px-8">
           <h1 className="text-2xl font-bold text-center">Create an Account</h1>
           <p className="text-sm text-default-500 text-center">
-            Sign up to start using GoHaul
+            Sign up to start using QUICKRENT
           </p>
         </CardHeader>
 

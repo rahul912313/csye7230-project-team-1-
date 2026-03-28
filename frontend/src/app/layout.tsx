@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "GoHaul",
+  title: "QUICKRENT",
   description: "Vehicle Rental Platform",
 };
 
