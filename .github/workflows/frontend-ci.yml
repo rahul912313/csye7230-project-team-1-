@@ -32,6 +32,11 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      - name: Clear Next.js build cache
+        working-directory: ./frontend
+        run: rm -rf .next
+        continue-on-error: true
+
       - name: Run ESLint
         working-directory: ./frontend
         run: npm run lint
