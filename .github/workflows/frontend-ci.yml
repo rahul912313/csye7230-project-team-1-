@@ -1,45 +1,47 @@
 name: Frontend CI
 
-# This workflow will be configured by the frontend team
-# Placeholder for now - uncomment and configure when frontend is ready
+on:
+  push:
+    branches: [ main, backend ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
 
-# on:
-#   push:
-#     branches: [ main, frontend, frontend-* ]
-#     paths:
-#       - 'frontend/**'
-#       - '.github/workflows/frontend-ci.yml'
-#   pull_request:
-#     branches: [ main ]
-#     paths:
-#       - 'frontend/**'
+jobs:
+  build:
+    name: Frontend Build & Lint
+    runs-on: ubuntu-latest
 
-# jobs:
-#   test:
-#     name: Frontend Tests
-#     runs-on: ubuntu-latest
-#     
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v3
-#     
-#     - name: Setup Node.js
-#       uses: actions/setup-node@v3
-#       with:
-#         node-version: '20.x'
-#         cache: 'npm'
-#         cache-dependency-path: frontend/package-lock.json
-#     
-#     - name: Install dependencies
-#       working-directory: ./frontend
-#       run: npm ci
-#     
-#     - name: Run tests
-#       working-directory: ./frontend
-#       run: npm test --if-present
-#     
-#     - name: Build
-#       working-directory: ./frontend
-#       run: npm run build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-# TODO: Frontend team to configure this workflow when ready
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build Next.js app
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000/api
+
+      - name: Build success
+        run: echo "✅ Frontend build successful!"
