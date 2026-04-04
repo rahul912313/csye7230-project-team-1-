@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: db.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: db.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>require("dotenv").config({ path: "./config/.env" });
+const mongoose = require("mongoose");
+
+/**
+ * DatabaseConnection - Singleton Pattern Implementation
+ * Ensures only one database connection instance exists throughout the application lifecycle
+ *
+ * Design Pattern: Singleton
+ * Purpose: Manage database connection as a single shared resource
+ * 
+ * QuickRent Vehicle Rental Platform
+ */
+class DatabaseConnection {
+  constructor() {
+    // If instance already exists, return it (Singleton guarantee)
+    if (DatabaseConnection.instance) {
+      return DatabaseConnection.instance;
+    }
+
+    // Initialize connection state
+    this.connection = null;
+    this.isConnecting = false;
+
+    // Store the instance
+    DatabaseConnection.instance = this;
+  }
+
+  /**
+   * Connect to MongoDB database
+   * @returns {Promise&lt;mongoose.Connection>} The mongoose connection object
+   */
+  async connect() {
+    // If already connected, return existing connection
+    if (this.connection) {
+      console.log("Database already connected, reusing existing connection");
+      return this.connection;
+    }
+
+    // If connection is in progress, wait for it
+    if (this.isConnecting) {
+      console.log("Connection in progress, waiting...");
+      return this.waitForConnection();
+    }
+
+    try {
+      this.isConnecting = true;
+      console.log("Establishing new database connection...");
+
+      await mongoose.connect(process.env.MONGO_URI, {
+        // Connection options for better reliability
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+      });
+
+      this.connection = mongoose.connection;
+      this.isConnecting = false;
+
+      console.log("✅ Connected to MongoDB successfully (QuickRent)");
+
+      // Handle connection events
+      this.setupEventHandlers();
+
+      return this.connection;
+    } catch (error) {
+      this.isConnecting = false;
+      console.error("❌ Error connecting to MongoDB:", error.message);
+      process.exit(1);
+    }
+  }
+
+  /**
+   * Wait for an ongoing connection attempt to complete
+   * @returns {Promise&lt;mongoose.Connection>}
+   */
+  async waitForConnection() {
+    return new Promise((resolve, reject) => {
+      const checkInterval = setInterval(() => {
+        if (this.connection) {
+          clearInterval(checkInterval);
+          resolve(this.connection);
+        } else if (!this.isConnecting) {
+          clearInterval(checkInterval);
+          reject(new Error("Connection failed"));
+        }
+      }, 100);
+    });
+  }
+
+  /**
+   * Get the current database connection
+   * @returns {mongoose.Connection} The active connection
+   * @throws {Error} If database is not connected
+   */
+  getConnection() {
+    if (!this.connection) {
+      throw new Error("Database not connected. Please call connect() first.");
+    }
+    return this.connection;
+  }
+
+  /**
+   * Check if database is currently connected
+   * @returns {boolean} Connection status
+   */
+  isConnected() {
+    return this.connection !== null &amp;&amp; mongoose.connection.readyState === 1;
+  }
+
+  /**
+   * Setup event handlers for connection lifecycle
+   */
+  setupEventHandlers() {
+    mongoose.connection.on("error", (error) => {
+      console.error("MongoDB connection error:", error);
+    });
+
+    mongoose.connection.on("disconnected", () => {
+      console.warn("⚠️  MongoDB disconnected");
+      this.connection = null;
+    });
+
+    mongoose.connection.on("reconnected", () => {
+      console.log("✅ MongoDB reconnected");
+      this.connection = mongoose.connection;
+    });
+
+    // Graceful shutdown
+    process.on("SIGINT", async () => {
+      await this.disconnect();
+      process.exit(0);
+    });
+  }
+
+  /**
+   * Disconnect from the database
+   */
+  async disconnect() {
+    if (this.connection) {
+      await mongoose.connection.close();
+      this.connection = null;
+      console.log("Database connection closed");
+    }
+  }
+
+  /**
+   * Get connection statistics
+   * @returns {Object} Connection stats
+   */
+  getStats() {
+    if (!this.connection) {
+      return { connected: false };
+    }
+
+    return {
+      connected: this.isConnected(),
+      readyState: mongoose.connection.readyState,
+      host: mongoose.connection.host,
+      port: mongoose.connection.port,
+      name: mongoose.connection.name,
+    };
+  }
+}
+
+// Create the singleton instance
+const dbInstance = new DatabaseConnection();
+
+// Export the singleton instance
+module.exports = dbInstance;
+
+/**
+ * Usage Examples:
+ *
+ * // In index.js or app.js:
+ * const db = require('./db');
+ * await db.connect();
+ *
+ * // In any other file:
+ * const db = require('./db');
+ * const connection = db.getConnection();
+ *
+ * // Check connection status:
+ * if (db.isConnected()) {
+ *   console.log('Database is connected');
+ * }
+ *
+ * // Get stats:
+ * console.log(db.getStats());
+ */
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="ChatbotService.html">ChatbotService</a></li><li><a href="DatabaseConnection.html">DatabaseConnection</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#JWT_SECRET">JWT_SECRET</a></li><li><a href="global.html#adminLogin">adminLogin</a></li><li><a href="global.html#adminSchema">adminSchema</a></li><li><a href="global.html#adminService">adminService</a></li><li><a href="global.html#adminSignup">adminSignup</a></li><li><a href="global.html#asyncHandler">asyncHandler</a></li><li><a href="global.html#authMiddleware">authMiddleware</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#chatbotService">chatbotService</a></li><li><a href="global.html#errorHandler">errorHandler</a></li><li><a href="global.html#getAllBookings">getAllBookings</a></li><li><a href="global.html#getAllUsers">getAllUsers</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#getUserDetails">getUserDetails</a></li><li><a href="global.html#loginUser">loginUser</a></li><li><a href="global.html#notFound">notFound</a></li><li><a href="global.html#registerUser">registerUser</a></li><li><a href="global.html#roleMiddleware">roleMiddleware</a></li><li><a href="global.html#updateUserDetails">updateUserDetails</a></li><li><a href="global.html#userSchema">userSchema</a></li><li><a href="global.html#userService">userService</a></li><li><a href="global.html#validateEmail">validateEmail</a></li><li><a href="global.html#validateObjectId">validateObjectId</a></li><li><a href="global.html#validatePassword">validatePassword</a></li><li><a href="global.html#validateRequired">validateRequired</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Mar 24 2026 22:54:30 GMT-0400 (Eastern Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

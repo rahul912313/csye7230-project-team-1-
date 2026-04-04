@@ -1,0 +1,137 @@
+@startuml QuickRent_Diagram_B
+
+title QuickRent — Part C\nClass Diagram (2 of 2): Application Layer
+
+hide circle
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor<<Service>> LightCyan
+    BackgroundColor<<Controller>> LightGray
+    BackgroundColor<<Middleware>> Lavender
+    FontSize 9
+    AttributeFontSize 8
+}
+skinparam packageFontSize 10
+skinparam nodesep 25
+skinparam ranksep 35
+
+' ── SERVICES ──
+package "Service Layer" {
+    class UserService <<Service>> {
+        -userRepository: UserRepository
+        +createUser(userData): Promise
+        +loginUser(email,password): Promise
+        +getUserById(id): Promise
+        +updateUser(id,data): Promise
+        +updateFirebaseToken(id,t): Promise
+    }
+    class AdminService <<Service>> {
+        -adminModel: Admin
+        -userRepository: UserRepository
+        +createAdmin(data): Promise
+        +loginAdmin(email,password): Promise
+        +getAllUsers(): Promise
+        +getAllBookings(): Promise
+    }
+    class BookingService <<Service>> {
+        -bookingRepository: BookingRepository
+        +requestBooking(uid,vid,dates): Promise
+        +confirmBooking(requestToken): Promise
+        +cancelBooking(bookingId): Promise
+        +getUserBookings(userId): Promise
+    }
+    class VehicleService <<Service>> {
+        -vehicleRepository: VehicleRepository
+        +addVehicle(data): Promise
+        +getAllVehicles(): Promise
+        +updateVehicle(id,data): Promise
+        +getVehiclesByLocation(lat,lng): Promise
+    }
+    class ChatbotService <<Service>> {
+        -apiKey: String
+        -systemContext: String
+        +chat(message,history): Promise
+        +getFallbackResponse(msg): String
+        +getContextualFallback(msg): String
+    }
+    class NotificationService <<Service>> {
+        -userModel: User
+        +sendNotification(uid,msg,type): Promise
+    }
+}
+
+' ── CONTROLLERS ──
+package "Controllers — Presentation Layer" {
+    class UserController <<Controller>> {
+        +registerUser(req,res): void
+        +loginUser(req,res): void
+        +getUserProfile(req,res): void
+        +updateUserProfile(req,res): void
+        +deleteAccount(req,res): void
+        +storeFirebaseToken(req,res): void
+    }
+    class AdminController <<Controller>> {
+        +adminSignup(req,res): void
+        +adminLogin(req,res): void
+        +getAllUsers(req,res): void
+        +getAllBookings(req,res): void
+        +updateUserDetails(req,res): void
+    }
+    class BookingController <<Controller>> {
+        +requestBooking(req,res): void
+        +confirmBooking(req,res): void
+        +cancelBooking(req,res): void
+        +getUserBookings(req,res): void
+    }
+    class VehicleController <<Controller>> {
+        +addVehicle(req,res): void
+        +getAllVehicles(req,res): void
+        +getVehicleById(req,res): void
+        +updateVehicle(req,res): void
+    }
+    class ChatbotController <<Controller>> {
+        +chat(req,res): void
+        +getStatus(req,res): void
+    }
+}
+
+' ── MIDDLEWARES ──
+package "Middlewares" {
+    class AuthMiddleware <<Middleware>> {
+        +verifyToken(req,res,next): void
+    }
+    class RoleMiddleware <<Middleware>> {
+        +checkAdmin(req,res,next): void
+    }
+    class ValidationMiddleware <<Middleware>> {
+        +validateRequest(schema): Function
+    }
+    class ErrorMiddleware <<Middleware>> {
+        +handleError(err,req,res,next): void
+    }
+}
+
+' ── DEPENDENCIES ──
+UserController --> UserService
+AdminController --> AdminService
+BookingController --> BookingService
+VehicleController --> VehicleService
+ChatbotController --> ChatbotService
+
+UserService ..> UserRepository : uses
+AdminService ..> UserRepository : uses
+BookingService ..> BookingRepository : uses
+VehicleService ..> VehicleRepository : uses
+BookingService ..> NotificationService : notifies
+NotificationService ..> NotificationFactory : uses
+
+AuthMiddleware ..> UserController : guards
+AuthMiddleware ..> AdminController : guards
+AuthMiddleware ..> BookingController : guards
+RoleMiddleware ..> AdminController : restricts
+ValidationMiddleware ..> UserController : validates
+ValidationMiddleware ..> BookingController : validates
+
+note "UserRepository, BookingRepository,\nVehicleRepository, NotificationFactory\ndefined in Diagram 1 of 2" as N1
+
+@enduml
