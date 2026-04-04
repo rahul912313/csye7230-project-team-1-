@@ -82,8 +82,6 @@ Once both servers are running:
 2. You should see the QuickRent landing page
 3. Click **Sign Up** to create a new account and confirm everything is working
 
-> **Screenshot placeholder:** QuickRent landing page
-
 ---
 
 ## Running Tests
@@ -102,7 +100,7 @@ npm run test:coverage
 
 ## Triggering the CI Pipeline
 
-The CI pipeline runs automatically on every push or pull request to `main`. To trigger it manually:
+The CI pipeline runs automatically on every push or pull request to `main`:
 1. Make any change to a file in the `backend/` directory
 2. Push to `main` or open a pull request
 3. Go to the **Actions** tab on GitHub to see the pipeline run
