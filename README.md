@@ -1,10 +1,24 @@
 # QuickRent — Vehicle Rental Management Platform
 
-QuickRent is a full-stack vehicle rental platform that allows users to browse vehicles, make bookings with real-time availability, pay securely via Stripe, and chat with an AI assistant. Admins can manage the fleet, users, bookings, and view analytics.
+> A full-stack vehicle rental platform with real-time availability, secure Stripe payments, interactive map search, and an AI-powered chatbot assistant.
+
+![Backend CI](https://github.com/rahul912313/csye7230-project-team-1-/actions/workflows/backend-ci.yml/badge.svg)
+![Frontend CI](https://github.com/rahul912313/csye7230-project-team-1-/actions/workflows/frontend-ci.yml/badge.svg)
 
 **Course:** CSYE 7230 — Software Engineering, Northeastern University, Spring 2026
 **Team:** Rahul Patil · Silin Zhang · Syed Rizvi · Misha Patel · Saumya Gorantala
-**GitHub:** https://github.com/rahul912313/csye7230-project-team-1-
+
+---
+
+## Features
+
+- **User Authentication** — JWT-based registration and login with bcrypt password hashing and role-based access control
+- **Vehicle Discovery** — Browse vehicles by type, filter by availability, and find nearby vehicles using an interactive Leaflet map with Haversine distance search
+- **Two-Phase Booking** — Request a price quote (Phase 1), then confirm with Stripe payment (Phase 2). MongoDB TTL index prevents double-bookings automatically
+- **Secure Payments** — Stripe integration with webhook processing, idempotency checking, and transaction lifecycle management
+- **AI Chatbot** — Hugging Face-powered assistant with keyword-based fallback responses for instant replies without API calls
+- **Admin Dashboard** — Full fleet, user, booking, and transaction management with Recharts analytics (bookings trend, revenue by type, fleet distribution)
+- **Push Notifications** — Firebase Admin SDK for booking confirmation and cancellation alerts
 
 ---
 
@@ -21,8 +35,22 @@ QuickRent is a full-stack vehicle rental platform that allows users to browse ve
 | AI Chatbot | Hugging Face Inference API |
 | Maps | Leaflet.js |
 | Analytics | Recharts |
-| Testing | Jest 29 |
+| Testing | Jest 29 — 76 passing tests |
+| API Docs | JSDoc 4 |
 | CI/CD | GitHub Actions |
+
+---
+
+## Architecture & Design Patterns
+
+QuickRent follows an N-Tier architecture with a Layered backend structure and MVC frontend pattern.
+
+| Pattern | Location | Role |
+|---------|----------|------|
+| **Singleton** | `backend/db.js` | Single shared MongoDB connection across the entire application |
+| **Repository** | `backend/repositories/` | Abstracts all database operations — enables full unit testing without a live DB |
+| **Strategy** | `backend/services/payment/` | Interchangeable payment providers — StripePaymentStrategy implements PaymentStrategy |
+| **Factory Method** | `backend/services/notification/` | Creates Push, Email, or SMS notification objects from a type string |
 
 ---
 
@@ -30,43 +58,48 @@ QuickRent is a full-stack vehicle rental platform that allows users to browse ve
 
 ```
 quickrent/
-├── backend/               # Node.js + Express REST API
-│   ├── controllers/       # HTTP request handlers
-│   ├── services/          # Business logic layer
-│   ├── repositories/      # Data access layer (Repository pattern)
-│   ├── models/            # MongoDB schemas
-│   ├── routes/            # Express routes
-│   ├── middlewares/       # Auth, role, validation
+├── backend/                    # Node.js + Express REST API
+│   ├── controllers/            # HTTP request handlers
+│   ├── services/               # Business logic (Strategy + Factory patterns)
+│   ├── repositories/           # Data access layer (Repository pattern)
+│   ├── models/                 # MongoDB schemas
+│   ├── routes/                 # Express routes (admin + user)
+│   ├── middlewares/            # JWT auth, role check, validation
 │   ├── docs/
-│   │   ├── api/           # JSDoc generated HTML documentation
-│   │   ├── uml/           # PlantUML class diagrams
-│   │   └── wiki/          # User manual source files
-│   ├── __tests__/         # Jest unit test suites
-│   ├── .github/workflows/ # CI/CD pipeline
-│   └── README.md          # Backend-specific instructions
-├── frontend/              # Next.js 14 TypeScript frontend
+│   │   ├── api/                # JSDoc generated HTML documentation
+│   │   ├── uml/                # PlantUML class diagrams
+│   │   └── wiki/               # User manual markdown source
+│   ├── __tests__/              # Jest unit test suites (76 tests)
+│   ├── db.js                   # Singleton database connection
+│   ├── jsdoc.json              # JSDoc configuration
+│   └── README.md               # Backend setup and API reference
+├── frontend/                   # Next.js 14 TypeScript frontend
 │   ├── src/
-│   │   ├── app/           # Next.js app router pages
-│   │   ├── components/    # React components
-│   │   ├── services/      # API service layer
-│   │   ├── store/         # Redux state management
-│   │   └── types/         # TypeScript type definitions
+│   │   ├── app/                # Next.js app router pages
+│   │   ├── components/         # React components (vehicles, bookings, admin, map, chatbot)
+│   │   ├── services/           # API service layer
+│   │   ├── store/              # Redux state management
+│   │   └── types/              # TypeScript type definitions
 │   └── README.md
-└── README.md              # This file
+├── .github/
+│   └── workflows/
+│       ├── backend-ci.yml      # Backend CI — tests + build
+│       └── frontend-ci.yml     # Frontend CI — lint + build
+└── README.md
 ```
 
 ---
 
-## Quick Start
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+
 - MongoDB Atlas account
-- Stripe account
-- Hugging Face API key
-- Firebase project
+- Stripe account (test keys work fine)
+- Hugging Face API key (free tier)
+- Firebase project with Admin SDK credentials
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/rahul912313/csye7230-project-team-1-.git
@@ -92,14 +125,12 @@ NODE_ENV=development
 PORT=5000
 ```
 
-Start the backend:
-
 ```bash
-npm run dev       # Development with hot reload
-npm start         # Production
+npm run dev      # Development server with hot reload (nodemon)
+npm start        # Production server
 ```
 
-Backend runs at `http://localhost:5000/api`
+API available at `http://localhost:5000/api`
 
 ### 3. Frontend Setup
 
@@ -114,68 +145,73 @@ Create `frontend/.env.local`:
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 ```
 
-Start the frontend:
-
 ```bash
 npm run dev
 ```
 
-Frontend runs at `http://localhost:3000`
+Application available at `http://localhost:3000`
 
 ---
 
-## Running Tests
+## Testing
 
 ```bash
 cd backend
-npm test                  # Run all tests
-npm run test:coverage     # Run with coverage report
+npm test                  # Run all 76 tests
+npm run test:coverage     # Run with lcov coverage report
 ```
 
-**76 passing tests** across 6 test files covering all four Gang of Four design patterns.
+Coverage report is generated at `backend/coverage/lcov-report/index.html`.
 
-| Test File | Tests | Coverage |
-|-----------|-------|---------|
-| __tests__/userService.test.js | 14 | User auth, registration, login |
-| __tests__/adminService.test.js | 12 | Admin creation, login, management |
-| __tests__/chatbotService.test.js | 20 | AI chatbot, keyword fallback |
-| __tests__/baseRepository.test.js | 22 | Repository pattern, pagination |
-| __tests__/db.test.js | 7 | Singleton DB connection |
-| __tests__/notificationFactory.test.js | 5 | Factory Method pattern |
+| Test File | Tests | What It Covers |
+|-----------|-------|----------------|
+| `__tests__/userService.test.js` | 14 | Registration, login, profile, password hashing |
+| `__tests__/adminService.test.js` | 12 | Admin creation, login, user management |
+| `__tests__/chatbotService.test.js` | 20 | Keyword fallback, HuggingFace API, error handling |
+| `__tests__/baseRepository.test.js` | 22 | CRUD, pagination, soft delete, text search |
+| `__tests__/db.test.js` | 7 | Singleton pattern — connection instance |
+| `__tests__/notificationFactory.test.js` | 5 | Factory Method pattern — notification types |
+
+All services are tested in isolation using Jest mocks — no live database required.
 
 ---
 
-## Generating API Documentation
+## API Documentation
+
+Generated from JSDoc comments using:
 
 ```bash
 cd backend
 npm run docs
 ```
 
-HTML documentation generated at `backend/docs/api/index.html`
-
-View online: https://github.com/rahul912313/csye7230-project-team-1-/blob/main/backend/docs/api/index.html
+Documentation is available at `backend/docs/api/index.html` and online at:
+https://htmlpreview.github.io/?https://raw.githubusercontent.com/rahul912313/csye7230-project-team-1-/main/backend/docs/api/index.html
 
 ---
 
-## CI/CD Pipeline
+## CI/CD
 
-Pipeline: `.github/workflows/backend-ci.yml`
+| Pipeline | File | Trigger |
+|----------|------|---------|
+| Backend CI | `.github/workflows/backend-ci.yml` | Push/PR to `main` when `backend/**` changes |
+| Frontend CI | `.github/workflows/frontend-ci.yml` | Push/PR to `main` when `frontend/**` changes |
 
-**Triggers:** Push to `main` or `backend` branches, Pull Requests to `main`
-
-**Pipeline steps:**
-1. Checkout repository
+**Backend pipeline steps:**
+1. Spin up MongoDB 7.0 service container
 2. Setup Node.js 20.x
-3. Install dependencies — `npm ci`
-4. Run linter — `npm run lint` (if configured)
-5. Run tests — `npm test`
+3. `npm ci` — install dependencies
+4. `npm run lint` — run linter
+5. `npm test` — run 76 unit tests with JWT and MongoDB env vars injected
 6. Upload coverage to Codecov
-7. Build check — `node -c index.js` (syntax validation)
+7. `node -c index.js` — syntax validation build check
 
-View pipeline: https://github.com/rahul912313/csye7230-project-team-1-/actions/workflows/backend-ci.yml
-
-![Backend CI](https://github.com/rahul912313/csye7230-project-team-1-/actions/workflows/backend-ci.yml/badge.svg)
+**Frontend pipeline steps:**
+1. Setup Node.js 20.x
+2. `npm install` — install dependencies
+3. Clear `.next` build cache
+4. `npm run lint` — ESLint check
+5. `npm run build` — full Next.js production build
 
 ---
 
@@ -190,8 +226,17 @@ cd backend
 railway up
 ```
 
-Set environment variables in Railway dashboard:
-- `MONGO_URI`, `JWT_SECRET`, `STRIPE_SECRET_KEY`, `HUGGINGFACE_API_KEY`, `NODE_ENV=production`, `PORT=5000`
+Configure these environment variables in the Railway dashboard:
+
+| Variable | Description |
+|----------|-------------|
+| `MONGO_URI` | MongoDB Atlas connection string |
+| `JWT_SECRET` | Secret key for JWT signing |
+| `STRIPE_SECRET_KEY` | Stripe secret API key |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `HUGGINGFACE_API_KEY` | Hugging Face API token |
+| `NODE_ENV` | Set to `production` |
+| `PORT` | Set to `5000` |
 
 ### Frontend — Vercel
 
@@ -201,34 +246,25 @@ cd frontend
 vercel --prod
 ```
 
-Set `NEXT_PUBLIC_API_URL` to your Railway backend URL in Vercel dashboard.
-
----
-
-## Design Patterns
-
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| Singleton | `backend/db.js` | Single shared MongoDB connection |
-| Repository | `backend/repositories/` | Abstracts all DB operations, enables unit testing |
-| Strategy | `backend/services/payment/` | Swappable payment providers (Stripe today, PayPal tomorrow) |
-| Factory Method | `backend/services/notification/` | Creates Push/Email/SMS notifications from type string |
+Set `NEXT_PUBLIC_API_URL` to your Railway backend URL in the Vercel dashboard.
 
 ---
 
 ## User Manual
 
-Full user manual with screenshots is available on the GitHub Wiki:
-https://github.com/rahul912313/csye7230-project-team-1-/wiki
+The full user manual with screenshots is published on the GitHub Wiki:
 
-- [Home](https://github.com/rahul912313/csye7230-project-team-1-/wiki/Home)
-- [Installation & Setup](https://github.com/rahul912313/csye7230-project-team-1-/wiki/Installation-and-Setup)
-- [User Guide](https://github.com/rahul912313/csye7230-project-team-1-/wiki/User-Guide)
-- [Admin Guide](https://github.com/rahul912313/csye7230-project-team-1-/wiki/Admin-Guide)
-- [API Reference](https://github.com/rahul912313/csye7230-project-team-1-/wiki/API-Reference)
+| Page | Description |
+|------|-------------|
+| [Home](https://github.com/rahul912313/csye7230-project-team-1-/wiki/Home) | Platform overview and tech stack |
+| [Installation & Setup](https://github.com/rahul912313/csye7230-project-team-1-/wiki/Installation-and-Setup) | Local setup and cloud deployment |
+| [User Guide](https://github.com/rahul912313/csye7230-project-team-1-/wiki/User-Guide) | Registration, vehicle search, booking, payment, chatbot |
+| [Admin Guide](https://github.com/rahul912313/csye7230-project-team-1-/wiki/Admin-Guide) | Fleet management, user management, analytics dashboard |
+| [API Reference](https://github.com/rahul912313/csye7230-project-team-1-/wiki/API-Reference) | All REST endpoints with request and response examples |
 
 ---
 
 ## License
 
-Apache-2.0 — Academic project for CSYE 7230, Northeastern University.
+Licensed under the [Apache-2.0 License](LICENSE).
+Academic project — CSYE 7230 Software Engineering, Northeastern University, Spring 2026.

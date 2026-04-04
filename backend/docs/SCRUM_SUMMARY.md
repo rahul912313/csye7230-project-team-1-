@@ -67,6 +67,5 @@ This sprint focused on integrating all completed features, writing the comprehen
 ---
 
 ## What Was Not Done (For Lack of Time)
-- **Continuous Deployment** — Auto-deployment to a cloud provider was not implemented. The CI pipeline handles build and test automation; deployment is performed manually via `npm start`. This was deemed out of scope given the academic timeline.
 - **Frontend test suite** — Unit tests for the Next.js frontend were not written. Testing effort was focused on the backend service layer where the core business logic resides.
 - **Saumya's admin analytics epic (#9)** — Final implementation is in progress at time of submission; the epic remains open.
