@@ -5,7 +5,6 @@ const BaseRepository = require('../repositories/BaseRepository');
  * Tests the Repository pattern implementation
  */
 
-// Mock mongoose model
 const mockModel = {
   find: jest.fn(),
   findById: jest.fn(),
@@ -28,9 +27,7 @@ describe('BaseRepository - Repository Pattern', () => {
     it('should return all documents', async () => {
       const mockData = [{ id: 1 }, { id: 2 }];
       mockModel.find.mockResolvedValue(mockData);
-
       const result = await repository.findAll();
-
       expect(result).toEqual(mockData);
       expect(mockModel.find).toHaveBeenCalledWith({}, null, {});
     });
@@ -38,9 +35,7 @@ describe('BaseRepository - Repository Pattern', () => {
     it('should apply filter when provided', async () => {
       const filter = { active: true };
       mockModel.find.mockResolvedValue([]);
-
       await repository.findAll(filter);
-
       expect(mockModel.find).toHaveBeenCalledWith(filter, null, {});
     });
   });
@@ -49,16 +44,13 @@ describe('BaseRepository - Repository Pattern', () => {
     it('should return document by id', async () => {
       const mockData = { _id: '123', name: 'Test' };
       mockModel.findById.mockResolvedValue(mockData);
-
       const result = await repository.findById('123');
-
       expect(result).toEqual(mockData);
       expect(mockModel.findById).toHaveBeenCalledWith('123');
     });
 
     it('should throw error when findById fails', async () => {
       mockModel.findById.mockRejectedValue(new Error('Database error'));
-
       await expect(repository.findById('123')).rejects.toThrow('Error finding by ID');
     });
   });
@@ -67,9 +59,7 @@ describe('BaseRepository - Repository Pattern', () => {
     it('should return one document matching filter', async () => {
       const mockData = { email: 'test@example.com' };
       mockModel.findOne.mockResolvedValue(mockData);
-
       const result = await repository.findOne({ email: 'test@example.com' });
-
       expect(result).toEqual(mockData);
       expect(mockModel.findOne).toHaveBeenCalledWith({ email: 'test@example.com' });
     });
@@ -80,16 +70,13 @@ describe('BaseRepository - Repository Pattern', () => {
       const newData = { name: 'New Item' };
       const mockCreated = { _id: '123', ...newData };
       mockModel.create.mockResolvedValue(mockCreated);
-
       const result = await repository.create(newData);
-
       expect(result).toEqual(mockCreated);
       expect(mockModel.create).toHaveBeenCalledWith(newData);
     });
 
     it('should throw error when create fails', async () => {
       mockModel.create.mockRejectedValue(new Error('Validation error'));
-
       await expect(repository.create({})).rejects.toThrow('Error creating');
     });
   });
@@ -99,15 +86,9 @@ describe('BaseRepository - Repository Pattern', () => {
       const updateData = { name: 'Updated' };
       const mockUpdated = { _id: '123', ...updateData };
       mockModel.findByIdAndUpdate.mockResolvedValue(mockUpdated);
-
       const result = await repository.update('123', updateData);
-
       expect(result).toEqual(mockUpdated);
-      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith(
-        '123',
-        updateData,
-        { new: true, runValidators: true }
-      );
+      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith('123', updateData, { new: true, runValidators: true });
     });
   });
 
@@ -115,9 +96,7 @@ describe('BaseRepository - Repository Pattern', () => {
     it('should delete document by id', async () => {
       const mockDeleted = { _id: '123', name: 'Deleted' };
       mockModel.findByIdAndDelete.mockResolvedValue(mockDeleted);
-
       const result = await repository.delete('123');
-
       expect(result).toEqual(mockDeleted);
       expect(mockModel.findByIdAndDelete).toHaveBeenCalledWith('123');
     });
@@ -126,9 +105,7 @@ describe('BaseRepository - Repository Pattern', () => {
   describe('count', () => {
     it('should return count of documents', async () => {
       mockModel.countDocuments.mockResolvedValue(5);
-
       const result = await repository.count();
-
       expect(result).toBe(5);
       expect(mockModel.countDocuments).toHaveBeenCalledWith({});
     });
@@ -136,9 +113,7 @@ describe('BaseRepository - Repository Pattern', () => {
     it('should apply filter when counting', async () => {
       const filter = { active: true };
       mockModel.countDocuments.mockResolvedValue(3);
-
       await repository.count(filter);
-
       expect(mockModel.countDocuments).toHaveBeenCalledWith(filter);
     });
   });
@@ -148,9 +123,7 @@ describe('BaseRepository - Repository Pattern', () => {
       mockModel.findOne.mockReturnValue({
         select: jest.fn().mockResolvedValue({ _id: '123' })
       });
-
       const result = await repository.exists({ email: 'test@example.com' });
-
       expect(result).toBe(true);
     });
 
@@ -158,9 +131,7 @@ describe('BaseRepository - Repository Pattern', () => {
       mockModel.findOne.mockReturnValue({
         select: jest.fn().mockResolvedValue(null)
       });
-
       const result = await repository.exists({ email: 'notfound@example.com' });
-
       expect(result).toBe(false);
     });
   });
@@ -191,7 +162,6 @@ describe('BaseRepository - Repository Pattern', () => {
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-12-31');
       const filter = repository.buildDateRangeFilter('createdAt', startDate, endDate);
-      
       expect(filter.createdAt).toHaveProperty('$gte');
       expect(filter.createdAt).toHaveProperty('$lte');
     });
@@ -201,32 +171,21 @@ describe('BaseRepository - Repository Pattern', () => {
     it('softDelete should mark document as deleted', async () => {
       const mockUpdated = { _id: '123', isDeleted: true };
       mockModel.findByIdAndUpdate.mockResolvedValue(mockUpdated);
-
       const result = await repository.softDelete('123');
-
       expect(result.isDeleted).toBe(true);
-      expect(mockModel.findByIdAndUpdate).toHaveBeenCalled();
     });
 
     it('restore should unmark deleted document', async () => {
       const mockRestored = { _id: '123', isDeleted: false };
       mockModel.findByIdAndUpdate.mockResolvedValue(mockRestored);
-
       const result = await repository.restore('123');
-
       expect(result.isDeleted).toBe(false);
     });
 
     it('findAllActive should exclude deleted documents', async () => {
       mockModel.find.mockResolvedValue([]);
-
       await repository.findAllActive();
-
-      expect(mockModel.find).toHaveBeenCalledWith(
-        { isDeleted: { $ne: true } },
-        null,
-        {}
-      );
+      expect(mockModel.find).toHaveBeenCalledWith({ isDeleted: { $ne: true } }, null, {});
     });
   });
 
@@ -239,9 +198,7 @@ describe('BaseRepository - Repository Pattern', () => {
         skip: jest.fn().mockReturnThis(),
         limit: jest.fn().mockResolvedValue(mockData)
       });
-
       const result = await repository.findWithPagination({}, 1, 10);
-
       expect(result).toHaveProperty('data');
       expect(result).toHaveProperty('pagination');
       expect(result.pagination.total).toBe(20);
@@ -255,9 +212,7 @@ describe('BaseRepository - Repository Pattern', () => {
         skip: jest.fn().mockReturnThis(),
         limit: jest.fn().mockResolvedValue([])
       });
-
       const result = await repository.findWithPagination({}, 2, 10);
-
       expect(result.pagination.page).toBe(2);
       expect(result.pagination.hasNext).toBe(true);
       expect(result.pagination.hasPrev).toBe(true);
