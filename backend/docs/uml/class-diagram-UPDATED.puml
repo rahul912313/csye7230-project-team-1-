@@ -1,0 +1,456 @@
+@startuml GoHaul_Complete_Class_Diagram_UPDATED
+
+title QuickRent Vehicle Rental System - Complete Class Diagram
+
+skinparam class {
+    BackgroundColor<<Singleton>> LightYellow
+    BackgroundColor<<Strategy>> LightBlue
+    BackgroundColor<<Repository>> LightPink
+    BackgroundColor<<Service>> LightCyan
+    BackgroundColor<<Model>> Wheat
+    BackgroundColor<<Controller>> LightGray
+    BackgroundColor<<Middleware>> Lavender
+    BackgroundColor<<Factory>> LightGreen
+}
+
+' ============================================
+' MODELS (Domain Layer)
+' ============================================
+
+package "Models (Domain Layer)" {
+
+    class User <<Model>> {
+        - _id: ObjectId
+        - name: String
+        - email: String
+        - password: String
+        - role: String
+        - driverLicense: String
+        - firebaseToken: String
+        - createdAt: Date
+    }
+
+    class Admin <<Model>> {
+        - _id: ObjectId
+        - name: String
+        - email: String
+        - password: String
+        - role: String
+        - createdAt: Date
+    }
+
+    class Vehicle <<Model>> {
+        - _id: ObjectId
+        - Vehicletype: String
+        - model: String
+        - pricePerDay: Number
+        - capacity: Number
+        - availability: Boolean
+        - licensePlate: String
+        - images: String[]
+        - location: Location
+        - createdAt: Date
+    }
+
+    class Location {
+        - address: String
+        - latitude: Number
+        - longitude: Number
+        - city: String
+        - state: String
+        - zipCode: String
+    }
+
+    class Booking <<Model>> {
+        - _id: ObjectId
+        - user: ObjectId
+        - vehicle: ObjectId
+        - bookingDate: Date
+        - startDate: Date
+        - endDate: Date
+        - status: String
+    }
+
+    class BookingRequest <<Model>> {
+        - _id: ObjectId
+        - requestToken: String
+        - user: ObjectId
+        - vehicle: ObjectId
+        - startDate: Date
+        - endDate: Date
+        - priceQuote: Number
+        - expiresAt: Date
+        - status: String
+        - createdAt: Date
+    }
+
+    class Transaction <<Model>> {
+        - _id: ObjectId
+        - userId: ObjectId
+        - bookingId: ObjectId
+        - providerPaymentId: String
+        - amount: Number
+        - currency: String
+        - date: Date
+        - status: String
+        - provider: String
+    }
+
+    Vehicle *-- Location
+    Booking --> User
+    Booking --> Vehicle
+    BookingRequest --> User
+    BookingRequest --> Vehicle
+    Transaction --> User
+    Transaction --> Booking
+
+    note bottom of BookingRequest
+        **TWO-PHASE BOOKING LOCK**
+        TTL index on expiresAt field
+        Auto-deleted after 15 minutes
+        Prevents race conditions &
+        double-bookings
+    end note
+
+    note bottom of Transaction
+        **Field names match code:**
+        userId / bookingId (not user/booking)
+        provider (not paymentMethod)
+        date (not transactionDate)
+        status: Pending/Completed/Failed/Cancelled
+    end note
+}
+
+' ============================================
+' SINGLETON PATTERN
+' ============================================
+
+package "Singleton Pattern" {
+
+    class DatabaseConnection <<Singleton>> {
+        - {static} instance: DatabaseConnection
+        - connection: mongoose.Connection
+        - isConnecting: Boolean
+        __
+        + {static} getInstance(): DatabaseConnection
+        + connect(): Promise
+        + getConnection(): Connection
+        + isConnected(): Boolean
+        + disconnect(): Promise
+        + getStats(): Object
+        - setupEventHandlers(): void
+        - waitForConnection(): Promise
+    }
+
+    note right of DatabaseConnection
+        **Singleton guarantee:**
+        Constructor checks for existing instance
+        Module exports pre-created instance
+        All services share one DB connection
+    end note
+}
+
+' ============================================
+' STRATEGY PATTERN - Payment
+' ============================================
+
+package "Strategy Pattern - Payment" {
+
+    abstract class PaymentStrategy <<Strategy>> {
+        + {abstract} processPayment(amount, currency, metadata): Promise
+        + {abstract} refundPayment(paymentId, amount): Promise
+        + {abstract} getPaymentStatus(paymentId): Promise
+    }
+
+    class StripePaymentStrategy <<Strategy>> {
+        - stripe: Stripe
+        __
+        + processPayment(amount, currency, metadata): Promise
+        + refundPayment(paymentId, amount): Promise
+        + getPaymentStatus(paymentId): Promise
+    }
+
+    class PaymentService <<Service>> {
+        - paymentStrategy: PaymentStrategy
+        - transactionModel: Transaction
+        __
+        + setPaymentStrategy(strategy): void
+        + createPaymentIntent(amount, currency, userId, bookingId): Promise
+        + refundPayment(paymentId, amount): Promise
+        + getPaymentStatus(paymentId): Promise
+    }
+
+    PaymentStrategy <|-- StripePaymentStrategy
+    PaymentService o--> PaymentStrategy
+
+    note bottom of PaymentStrategy
+        **Strategy Pattern methods (actual code):**
+        processPayment() not createPaymentIntent()
+        getPaymentStatus() not confirmPayment()
+    end note
+}
+
+' ============================================
+' FACTORY PATTERN - Notifications
+' ============================================
+
+package "Factory Pattern - Notifications" {
+
+    abstract class Notification <<Factory>> {
+        + {abstract} send(recipient, message, metadata): Promise
+    }
+
+    class PushNotification <<Factory>> {
+        + send(token, message, metadata): Promise
+    }
+
+    class EmailNotification <<Factory>> {
+        + send(email, message, metadata): Promise
+    }
+
+    class SMSNotification <<Factory>> {
+        + send(phone, message, metadata): Promise
+    }
+
+    class NotificationFactory <<Factory>> {
+        + {static} createNotification(type): Notification
+        + {static} getAvailableTypes(): String[]
+    }
+
+    class NotificationService <<Service>> {
+        - userModel: User
+        __
+        + sendNotification(userId, message, type): Promise
+        + sendMultipleNotifications(userId, message, types): Promise
+    }
+
+    Notification <|-- PushNotification
+    Notification <|-- EmailNotification
+    Notification <|-- SMSNotification
+    NotificationFactory ..> PushNotification : creates
+    NotificationFactory ..> EmailNotification : creates
+    NotificationFactory ..> SMSNotification : creates
+    NotificationService ..> NotificationFactory : uses
+}
+
+' ============================================
+' REPOSITORY PATTERN
+' ============================================
+
+package "Repository Pattern" {
+
+    class BaseRepository <<Repository>> {
+        - model: mongoose.Model
+        __
+        + findAll(filter, options): Promise
+        + findById(id): Promise
+        + findOne(filter): Promise
+        + create(data): Promise
+        + update(id, data, options): Promise
+        + delete(id): Promise
+        + count(filter): Promise
+        + exists(filter): Promise
+    }
+
+    class UserRepository <<Repository>> {
+        + findByEmail(email): Promise
+    }
+
+    class VehicleRepository <<Repository>> {
+        + findByLicensePlate(plate): Promise
+        + findAvailable(startDate, endDate): Promise
+        + findNearby(lat, lng, radiusKm): Promise
+    }
+
+    class BookingRepository <<Repository>> {
+        + findByUser(userId): Promise
+        + checkConflicts(vehicleId, start, end): Promise
+    }
+
+    class TransactionRepository <<Repository>> {
+        + findByUserId(userId): Promise
+        + findByProviderId(providerPaymentId): Promise
+    }
+
+    BaseRepository <|-- UserRepository
+    BaseRepository <|-- VehicleRepository
+    BaseRepository <|-- BookingRepository
+    BaseRepository <|-- TransactionRepository
+}
+
+' ============================================
+' SERVICE LAYER
+' ============================================
+
+package "Service Layer" {
+
+    class UserService <<Service>> {
+        - userModel: User
+        __
+        + createUser(userData): Promise
+        + loginUser(email, password): Promise
+        + getUserById(id): Promise
+        + updateUser(id, data): Promise
+    }
+
+    class VehicleService <<Service>> {
+        - vehicleModel: Vehicle
+        - bookingModel: Booking
+        __
+        + addVehicle(data): Promise
+        + getAllVehicles(): Promise
+        + getVehicleById(id): Promise
+        + updateVehicle(id, data): Promise
+        + removeVehicle(id): Promise
+        + getAvailableVehicles(start, end): Promise
+        + getVehiclesByLocation(lat, lng, radius): Promise
+        + calculateDistance(lat1, lon1, lat2, lon2): Number
+        + toRad(deg): Number
+    }
+
+    class BookingService <<Service>> {
+        - bookingModel: Booking
+        - userModel: User
+        - vehicleModel: Vehicle
+        - bookingRequestModel: BookingRequest
+        __
+        + createBooking(data): Promise
+        + updateBooking(id, data): Promise
+        + getBookingById(id): Promise
+        + getUserBooking(userId): Promise
+        + cancelBooking(bookingId): Promise
+        + checkConflictingBooking(vehicleId, start, end): Promise
+        + getAllBookings(): Promise
+        + requestBooking(userId, vehicleId, start, end): Promise
+        + confirmBooking(requestToken): Promise
+    }
+
+    class TransactionService <<Service>> {
+        - transactionModel: Transaction
+        __
+        + createTransaction(data): Promise
+        + getTransactionById(id): Promise
+        + getAllTransactionsOfUser(userId): Promise
+        + getAllTransactions(): Promise
+        + updateTransactionStatus(id, status): Promise
+        + getTransactionsByUserId(userId): Promise
+    }
+
+    class WebhookService <<Service>> {
+        __
+        + handleStripeWebhookEvent(event): Promise
+        note: exported as plain function,\nnot instantiated as class
+    }
+
+    class ChatbotService <<Service>> {
+        - apiKey: String
+        - systemContext: String
+        __
+        + chat(userMessage, conversationHistory): Promise
+        + getFallbackResponse(message): String
+        + getContextualFallback(message): String
+    }
+
+    class FirebaseService <<Service>> {
+        - admin: FirebaseAdmin
+        __
+        + sendPushNotification(token, message): Promise
+    }
+}
+
+' ============================================
+' CONTROLLERS
+' ============================================
+
+package "Controllers" {
+
+    class UserController <<Controller>> {
+        + signup(req, res): void
+        + login(req, res): void
+        + getProfile(req, res): void
+        + updateProfile(req, res): void
+    }
+
+    class VehicleController <<Controller>> {
+        + addVehicle(req, res): void
+        + getAllVehicles(req, res): void
+        + getVehicleById(req, res): void
+        + getVehiclesByLocation(req, res): void
+        + getAvailableVehicles(req, res): void
+    }
+
+    class BookingController <<Controller>> {
+        + requestBooking(req, res): void
+        + confirmBookingWithPayment(req, res): void
+        + createBooking(req, res): void
+        + getBookingById(req, res): void
+        + cancelBooking(req, res): void
+        + getAllUserBookings(req, res): void
+    }
+
+    class PaymentController <<Controller>> {
+        + createPayment(req, res): void
+        + updateBookingStatusAfterPayment(req, res): void
+    }
+
+    class TransactionController <<Controller>> {
+        + getUserTransactions(req, res): void
+        + getTransactionById(req, res): void
+    }
+
+    class WebhookController <<Controller>> {
+        + handleStripeWebhook(req, res): void
+    }
+
+    class ChatbotController <<Controller>> {
+        + chat(req, res): void
+    }
+
+    UserController --> UserService
+    VehicleController --> VehicleService
+    BookingController --> BookingService
+    BookingController --> PaymentService
+    PaymentController --> PaymentService
+    TransactionController --> TransactionService
+    WebhookController --> WebhookService
+    ChatbotController --> ChatbotService
+}
+
+' ============================================
+' MIDDLEWARES
+' ============================================
+
+package "Middlewares" {
+
+    class AuthMiddleware <<Middleware>> {
+        + verifyToken(req, res, next): void
+        + extractUserId(token): String
+    }
+
+    class RoleMiddleware <<Middleware>> {
+        + checkAdmin(req, res, next): void
+        + checkUser(req, res, next): void
+    }
+
+    class UploadMiddleware <<Middleware>> {
+        + uploadImages(req, res, next): void
+    }
+}
+
+AuthMiddleware ..> UserController
+AuthMiddleware ..> BookingController
+RoleMiddleware ..> VehicleController
+UploadMiddleware ..> VehicleController
+
+' ============================================
+' DB CONNECTIONS
+' ============================================
+
+DatabaseConnection ..> User
+DatabaseConnection ..> Admin
+DatabaseConnection ..> Vehicle
+DatabaseConnection ..> Booking
+DatabaseConnection ..> BookingRequest
+DatabaseConnection ..> Transaction
+
+@enduml

@@ -1,0 +1,291 @@
+@startuml Singleton_Pattern_Database_Connection
+
+' Title
+title Singleton Pattern - Database Connection Class Diagram
+
+' Define the Singleton class
+class DatabaseConnection <<Singleton>> {
+  {static} - instance : DatabaseConnection
+  - connection : mongoose.Connection
+  - isConnecting : boolean
+  
+  + connect() : Promise<Connection>
+  + getConnection() : Connection
+  + isConnected() : boolean
+  + disconnect() : Promise<void>
+  + getStats() : Object
+  - waitForConnection() : Promise<Connection>
+  - setupEventHandlers() : void
+}
+
+note right of DatabaseConnection
+  **Singleton Pattern**
+  
+  Ensures only ONE instance
+  of DatabaseConnection exists
+  throughout application lifecycle.
+  
+  Key Features:
+  • Lazy initialization
+  • Instance reuse
+  • Thread-safe access
+  • Event handling
+end note
+
+' Show the instance relationship
+DatabaseConnection "1" -- "1" DatabaseConnection : instance
+
+' Client usage
+class "Client (Services/Controllers)" as Client {
+  + useDatabase()
+}
+
+Client ..> DatabaseConnection : <<uses>>
+
+note bottom of Client
+  All clients get the same
+  DatabaseConnection instance
+  regardless of where they
+  import it from.
+end note
+
+' MongoDB Connection
+database MongoDB {
+}
+
+DatabaseConnection --> MongoDB : connects to
+
+@enduml
+
+' ============================================
+' Sequence Diagram: First Connection
+' ============================================
+
+@startuml Singleton_First_Connection_Sequence
+
+title Singleton Pattern - First Connection Attempt
+
+actor "Client 1" as C1
+participant "DatabaseConnection\n(Singleton)" as DB
+database MongoDB
+
+C1 -> DB : connect()
+activate DB
+
+DB -> DB : Check if instance exists
+note right: instance = null\nCreate new instance
+
+DB -> DB : Check if connection exists
+note right: connection = null\nEstablish new connection
+
+DB -> MongoDB : mongoose.connect()
+activate MongoDB
+MongoDB --> DB : Connection established
+deactivate MongoDB
+
+DB -> DB : Store connection
+DB -> DB : Setup event handlers
+
+DB --> C1 : Return connection
+deactivate DB
+
+note right of C1
+  First call creates
+  the singleton instance
+  and establishes connection
+end note
+
+@enduml
+
+' ============================================
+' Sequence Diagram: Subsequent Connection
+' ============================================
+
+@startuml Singleton_Subsequent_Connection_Sequence
+
+title Singleton Pattern - Subsequent Connection Attempts
+
+actor "Client 1" as C1
+actor "Client 2" as C2
+participant "DatabaseConnection\n(Singleton)" as DB
+database MongoDB
+
+C1 -> DB : connect()
+activate DB
+DB -> MongoDB : Establish connection
+activate MongoDB
+MongoDB --> DB : Connected
+deactivate MongoDB
+DB --> C1 : Return connection
+deactivate DB
+
+note right of C1: First connection established
+
+...Later in application...
+
+C2 -> DB : connect()
+activate DB
+
+DB -> DB : Check if instance exists
+note right: instance EXISTS ✓\nReturn existing instance
+
+DB -> DB : Check if connection exists
+note right: connection EXISTS ✓\nReuse existing connection
+
+DB --> C2 : Return existing connection
+deactivate DB
+
+note right of C2
+  Subsequent calls reuse
+  the existing singleton
+  instance and connection
+end note
+
+note over C1, C2
+  Both clients share
+  the SAME connection
+end note
+
+@enduml
+
+' ============================================
+' State Diagram: Connection Lifecycle
+' ============================================
+
+@startuml Singleton_Connection_State_Diagram
+
+title Database Connection State Machine
+
+[*] --> NotConnected : Create Singleton
+
+NotConnected --> Connecting : connect() called
+Connecting --> Connected : Connection successful
+Connecting --> NotConnected : Connection failed
+
+Connected --> NotConnected : disconnect() called
+Connected --> NotConnected : Connection lost
+Connected --> Connected : getConnection() called
+
+NotConnected --> Connecting : Retry connection
+
+state Connected {
+  [*] --> Active
+  Active --> Active : Database operations
+  Active --> Monitoring : Event triggered
+  Monitoring --> Active : Event handled
+}
+
+note right of Connected
+  While connected:
+  • Accept queries
+  • Monitor events
+  • Track statistics
+  • Handle errors
+end note
+
+@enduml
+
+' ============================================
+' Component Diagram: Architecture View
+' ============================================
+
+@startuml Singleton_Architecture_Component
+
+title Database Singleton in Application Architecture
+
+package "Application Layer" {
+  component [UserController] as UC
+  component [VehicleController] as VC
+  component [BookingController] as BC
+}
+
+package "Service Layer" {
+  component [UserService] as US
+  component [VehicleService] as VS
+  component [BookingService] as BS
+}
+
+package "Data Access Layer" {
+  component [DatabaseConnection\n<<Singleton>>] as DB
+  component [User Model] as UM
+  component [Vehicle Model] as VM
+  component [Booking Model] as BM
+}
+
+database "MongoDB" as MongoDB
+
+' Relationships
+UC --> US
+VC --> VS
+BC --> BS
+
+US --> DB
+VS --> DB
+BS --> DB
+
+US --> UM
+VS --> VM
+BS --> BM
+
+UM --> DB
+VM --> DB
+BM --> DB
+
+DB --> MongoDB : single connection
+
+note right of DB
+  **Singleton ensures**
+  all models and services
+  share ONE connection
+  to MongoDB
+end note
+
+@enduml
+
+' ============================================
+' Object Diagram: Runtime Instance
+' ============================================
+
+@startuml Singleton_Runtime_Objects
+
+title Runtime Object Structure - Singleton Pattern
+
+object ":DatabaseConnection" as db1 {
+  connection = mongoose.Connection#123
+  isConnecting = false
+}
+
+object ":UserService" as us {
+  uses connection
+}
+
+object ":VehicleService" as vs {
+  uses connection
+}
+
+object ":BookingService" as bs {
+  uses connection
+}
+
+object "mongoose.Connection#123" as conn {
+  host = "localhost"
+  port = 27017
+  readyState = 1 (connected)
+}
+
+us ..> db1 : <<imports>>
+vs ..> db1 : <<imports>>
+bs ..> db1 : <<imports>>
+
+db1 --> conn : holds reference
+
+note right of db1
+  All services import
+  the SAME instance
+  
+  db1 === db2 === db3
+  (same object reference)
+end note
+
+@enduml
+

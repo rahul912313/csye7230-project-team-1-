@@ -28,39 +28,23 @@
         <article>
             <pre class="prettyprint source linenums"><code>const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const UserRepository = require("../repositories/UserRepository");
-const User = require("../models/user");
 
 /**
  * UserService - Service Layer for User Management
  * Implements business logic for user operations
  * Uses Dependency Injection for better testability and modularity
- * 
- * QuickRent Vehicle Rental Platform
  */
 class UserService {
   constructor(userModel) {
     this.userModel = userModel;
-    this.userRepository = new UserRepository(userModel);
   }
 
-  /**
-   * Create a new user
-   * @param {Object} userData - User data
-   * @returns {Promise&lt;Object>} Created user and token
-   */
   async createUser(userData) {
     try {
-      // Check if user exists by email
-      const existingUser = await this.userRepository.findByEmail(userData.email);
+      // Check if user exists
+      const existingUser = await this.userModel.findOne({ email: userData.email });
       if (existingUser) {
         throw new Error("User already exists with this email");
-      }
-
-      // Check if user exists by driver license
-      const existingLicense = await this.userRepository.findByDriverLicense(userData.driverLicense);
-      if (existingLicense) {
-        throw new Error("Driver license already registered");
       }
 
       // Hash password
@@ -70,15 +54,15 @@ class UserService {
       const role = "user";
 
       // Create user
-      const user = await this.userRepository.create({
+      const user = await this.userModel.create({
         ...userData,
         password: hashedPassword,
         role: role,
       });
 
-      // Generate token with userId and role
+      // Generating token with userId and role
       const token = jwt.sign(
-        { userId: user._id, role: user.role, email: user.email },
+        { userId: user._id, role: user.role },
         process.env.JWT_SECRET,
         {
           expiresIn: "24h",
@@ -92,16 +76,10 @@ class UserService {
     }
   }
 
-  /**
-   * Login user
-   * @param {String} email - User email
-   * @param {String} password - User password
-   * @returns {Promise&lt;Object>} User and token
-   */
   async loginUser(email, password) {
     try {
-      // Find user with password
-      const user = await this.userRepository.findByEmailWithPassword(email);
+      // Find user
+      const user = await this.userModel.findOne({ email }).select("+password");
       if (!user) {
         throw new Error("User not found");
       }
@@ -114,7 +92,7 @@ class UserService {
 
       // Generate token with userId and role
       const token = jwt.sign(
-        { userId: user._id, role: user.role, email: user.email },
+        { userId: user._id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: "24h" }
       );
@@ -126,14 +104,9 @@ class UserService {
     }
   }
 
-  /**
-   * Get user by ID
-   * @param {String} userId - User ID
-   * @returns {Promise&lt;Object>} User object
-   */
   async getUserById(userId) {
     try {
-      const user = await this.userRepository.findByIdWithoutPassword(userId);
+      const user = await this.userModel.findById(userId).select("-password");
       if (!user) {
         throw new Error("User not found");
       }
@@ -144,12 +117,6 @@ class UserService {
     }
   }
 
-  /**
-   * Update user
-   * @param {String} userId - User ID
-   * @param {Object} updateData - Data to update
-   * @returns {Promise&lt;Object>} Updated user
-   */
   async updateUser(userId, updateData) {
     try {
       // If updating email, check if it exists and is not being used by another user
@@ -170,35 +137,16 @@ class UserService {
       }
 
       // Update user data
-      const user = await this.userRepository.update(
+      const user = await this.userModel.findByIdAndUpdate(
         userId,
-        updateData,
+        { $set: updateData },
         { new: true, runValidators: true }
-      );
+      ).select("-password");
 
       return user;
     } catch (e) {
       console.error(`Error updating user: `, e.message);
       throw new Error(`Error updating user: ${e.message}`);
-    }
-  }
-
-  /**
-   * Update Firebase token
-   * @param {String} userId - User ID
-   * @param {String} token - Firebase token
-   * @returns {Promise&lt;Object>} Updated user
-   */
-  async updateFirebaseToken(userId, token) {
-    try {
-      const user = await this.userRepository.updateFirebaseToken(userId, token);
-      if (!user) {
-        throw new Error("User not found");
-      }
-      return user;
-    } catch (e) {
-      console.error("Error updating Firebase token:", e.message);
-      throw new Error(`Error updating Firebase token: ${e.message}`);
     }
   }
 }
@@ -214,13 +162,13 @@ module.exports = UserService;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="ChatbotService.html">ChatbotService</a></li><li><a href="DatabaseConnection.html">DatabaseConnection</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#JWT_SECRET">JWT_SECRET</a></li><li><a href="global.html#adminLogin">adminLogin</a></li><li><a href="global.html#adminSchema">adminSchema</a></li><li><a href="global.html#adminService">adminService</a></li><li><a href="global.html#adminSignup">adminSignup</a></li><li><a href="global.html#asyncHandler">asyncHandler</a></li><li><a href="global.html#authMiddleware">authMiddleware</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#chatbotService">chatbotService</a></li><li><a href="global.html#errorHandler">errorHandler</a></li><li><a href="global.html#getAllBookings">getAllBookings</a></li><li><a href="global.html#getAllUsers">getAllUsers</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#getUserDetails">getUserDetails</a></li><li><a href="global.html#loginUser">loginUser</a></li><li><a href="global.html#notFound">notFound</a></li><li><a href="global.html#registerUser">registerUser</a></li><li><a href="global.html#roleMiddleware">roleMiddleware</a></li><li><a href="global.html#updateUserDetails">updateUserDetails</a></li><li><a href="global.html#userSchema">userSchema</a></li><li><a href="global.html#userService">userService</a></li><li><a href="global.html#validateEmail">validateEmail</a></li><li><a href="global.html#validateObjectId">validateObjectId</a></li><li><a href="global.html#validatePassword">validatePassword</a></li><li><a href="global.html#validateRequired">validateRequired</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="BookingRepository.html">BookingRepository</a></li><li><a href="EmailNotification.html">EmailNotification</a></li><li><a href="Notification.html">Notification</a></li><li><a href="NotificationFactory.html">NotificationFactory</a></li><li><a href="NotificationService.html">NotificationService</a></li><li><a href="PaymentService.html">PaymentService</a></li><li><a href="PaymentStrategy.html">PaymentStrategy</a></li><li><a href="PushNotification.html">PushNotification</a></li><li><a href="SMSNotification.html">SMSNotification</a></li><li><a href="StripePaymentStrategy.html">StripePaymentStrategy</a></li><li><a href="TransactionRepository.html">TransactionRepository</a></li><li><a href="TransactionService.html">TransactionService</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li><li><a href="VehicleRepository.html">VehicleRepository</a></li><li><a href="VehicleService.html">VehicleService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#bookingRequestSchema">bookingRequestSchema</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#createPaymentIntent">createPaymentIntent</a></li><li><a href="global.html#crypto">crypto</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#sendNotificationController">sendNotificationController</a></li><li><a href="global.html#stripeStrategy">stripeStrategy</a></li><li><a href="global.html#updateBookingStatusAfterPayment">updateBookingStatusAfterPayment</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Mar 24 2026 22:54:30 GMT-0400 (Eastern Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Fri Apr 03 2026 13:07:06 GMT-0400 (Eastern Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>

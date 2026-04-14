@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: services/notification/PushNotification.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: services/notification/PushNotification.js</h1>
 
     
 
@@ -26,63 +26,52 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
+            <pre class="prettyprint source linenums"><code>const Notification = require("./Notification");
+const admin = require("firebase-admin");
 
 /**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+ * PushNotification - Concrete implementation for Push Notifications
+ * Uses Firebase Cloud Messaging (FCM)
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
-  }
-
-  async findByEmail(email) {
-    try {
-      return await this.model.findOne({ email });
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+class PushNotification extends Notification {
+  constructor() {
+    super();
+    // Initialize Firebase Admin SDK if not already initialized
+    if (!admin.apps.length) {
+      const serviceAccount = require("../../config/firebaseConfig.json");
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
     }
+    this.messaging = admin.messaging();
   }
 
-  async findByEmailWithPassword(email) {
-    try {
-      return await this.model.findOne({ email }).select("+password");
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
-    }
-  }
+  async send(token, message, data) {
+    const payload = {
+      notification: {
+        title: message.title || "Notification",
+        body: message.body || "",
+      },
+      token,
+      data: data || {},
+    };
 
-  async findByDriverLicense(driverLicense) {
     try {
-      return await this.model.findOne({ driverLicense });
+      const response = await this.messaging.send(payload);
+      console.log("Push notification sent successfully:", response);
+      return {
+        success: true,
+        response,
+        type: "push",
+      };
     } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
-    }
-  }
-
-  async updateFirebaseToken(userId, token) {
-    try {
-      return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
-        { new: true }
-      );
-    } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
-    }
-  }
-
-  async findByIdWithoutPassword(id) {
-    try {
-      return await this.model.findById(id).select("-password");
-    } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
+      console.error("Error sending push notification:", error);
+      throw new Error(`Push notification error: ${error.message}`);
     }
   }
 }
 
-module.exports = UserRepository;
+module.exports = PushNotification;
 </code></pre>
         </article>
     </section>

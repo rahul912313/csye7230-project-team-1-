@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: services/notification/SMSNotification.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: services/notification/SMSNotification.js</h1>
 
     
 
@@ -26,63 +26,33 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
+            <pre class="prettyprint source linenums"><code>const Notification = require("./Notification");
 
 /**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+ * SMSNotification - Concrete implementation for SMS Notifications
+ * Placeholder for future SMS service integration
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
-  }
-
-  async findByEmail(email) {
+class SMSNotification extends Notification {
+  async send(phoneNumber, message, data) {
     try {
-      return await this.model.findOne({ email });
+      // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
+      console.log(`Sending SMS to ${phoneNumber}`);
+      console.log(`Message: ${message.body}`);
+      
+      // Simulate SMS sending
+      return {
+        success: true,
+        message: "SMS notification sent (simulated)",
+        type: "sms",
+      };
     } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
-    }
-  }
-
-  async findByEmailWithPassword(email) {
-    try {
-      return await this.model.findOne({ email }).select("+password");
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
-    }
-  }
-
-  async findByDriverLicense(driverLicense) {
-    try {
-      return await this.model.findOne({ driverLicense });
-    } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
-    }
-  }
-
-  async updateFirebaseToken(userId, token) {
-    try {
-      return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
-        { new: true }
-      );
-    } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
-    }
-  }
-
-  async findByIdWithoutPassword(id) {
-    try {
-      return await this.model.findById(id).select("-password");
-    } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
+      console.error("Error sending SMS notification:", error);
+      throw new Error(`SMS notification error: ${error.message}`);
     }
   }
 }
 
-module.exports = UserRepository;
+module.exports = SMSNotification;
 </code></pre>
         </article>
     </section>

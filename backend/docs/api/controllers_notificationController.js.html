@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: controllers/notificationController.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: controllers/notificationController.js</h1>
 
     
 
@@ -26,63 +26,49 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
+            <pre class="prettyprint source linenums"><code>const NotificationService = require("../services/notificationService");
+const User = require("../models/user");
+
+// Initialize service with dependency injection
+const notificationService = new NotificationService(User);
 
 /**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+ * Controller for sending notifications
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
+const sendNotificationController = async (req, res) => {
+  const { userId, message, type } = req.body;
+
+  if (!userId || !message) {
+    return res.status(400).json({
+      success: false,
+      message: "UserId and message are required",
+    });
   }
 
-  async findByEmail(email) {
-    try {
-      return await this.model.findOne({ email });
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
-    }
+  try {
+    const response = await notificationService.sendNotification(
+      userId,
+      message,
+      type || "push"
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Notification sent successfully",
+      data: response,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
+};
 
-  async findByEmailWithPassword(email) {
-    try {
-      return await this.model.findOne({ email }).select("+password");
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
-    }
-  }
-
-  async findByDriverLicense(driverLicense) {
-    try {
-      return await this.model.findOne({ driverLicense });
-    } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
-    }
-  }
-
-  async updateFirebaseToken(userId, token) {
-    try {
-      return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
-        { new: true }
-      );
-    } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
-    }
-  }
-
-  async findByIdWithoutPassword(id) {
-    try {
-      return await this.model.findById(id).select("-password");
-    } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
-    }
-  }
-}
-
-module.exports = UserRepository;
+module.exports = {
+  sendNotificationController,
+};
 </code></pre>
         </article>
     </section>

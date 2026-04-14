@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: services/payment/PaymentService.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: services/payment/PaymentService.js</h1>
 
     
 
@@ -26,63 +26,82 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
-
-/**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+            <pre class="prettyprint source linenums"><code>/**
+ * PaymentService - Context for Strategy Pattern
+ * Manages payment processing using different payment strategies
+ * Allows runtime switching between payment providers
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
+class PaymentService {
+  constructor(paymentStrategy, transactionModel) {
+    this.paymentStrategy = paymentStrategy;
+    this.transactionModel = transactionModel;
   }
 
-  async findByEmail(email) {
-    try {
-      return await this.model.findOne({ email });
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
-    }
+  /**
+   * Set or switch payment strategy at runtime
+   */
+  setPaymentStrategy(paymentStrategy) {
+    this.paymentStrategy = paymentStrategy;
   }
 
-  async findByEmailWithPassword(email) {
+  /**
+   * Process payment using the current strategy
+   */
+  async createPaymentIntent(amount, currency, userId, bookingId) {
     try {
-      return await this.model.findOne({ email }).select("+password");
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
-    }
-  }
-
-  async findByDriverLicense(driverLicense) {
-    try {
-      return await this.model.findOne({ driverLicense });
-    } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
-    }
-  }
-
-  async updateFirebaseToken(userId, token) {
-    try {
-      return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
-        { new: true }
+      // Process payment using the current strategy
+      const paymentResult = await this.paymentStrategy.processPayment(
+        amount,
+        currency,
+        { userId, bookingId }
       );
+
+      // Save transaction to database
+      const transaction = new this.transactionModel({
+        userId,
+        bookingId,
+        providerPaymentId: paymentResult.id,
+        amount,
+        currency,
+        status: "Pending",
+        provider: paymentResult.provider,
+      });
+
+      await transaction.save();
+
+      return {
+        paymentIntent: paymentResult,
+        transaction,
+      };
     } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
+      throw new Error(`Payment processing error: ${error.message}`);
     }
   }
 
-  async findByIdWithoutPassword(id) {
+  /**
+   * Refund a payment using the current strategy
+   */
+  async refundPayment(paymentId, amount) {
     try {
-      return await this.model.findById(id).select("-password");
+      return await this.paymentStrategy.refundPayment(paymentId, amount);
     } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
+      throw new Error(`Refund error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get payment status using the current strategy
+   */
+  async getPaymentStatus(paymentId) {
+    try {
+      return await this.paymentStrategy.getPaymentStatus(paymentId);
+    } catch (error) {
+      throw new Error(`Status check error: ${error.message}`);
     }
   }
 }
 
-module.exports = UserRepository;
+module.exports = PaymentService;
 </code></pre>
         </article>
     </section>

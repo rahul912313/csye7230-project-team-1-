@@ -1,0 +1,133 @@
+@startuml StateMachine_Booking_Lifecycle
+
+title State Machine Diagram - Booking Lifecycle\n(Actual Implementation - Verified Against Code)
+
+[*] --> pending : Create Booking\nBookingService.confirmBooking()
+
+state "pending" as pending #LightYellow {
+    pending : Booking created
+    pending : Waiting for payment confirmation
+    pending : Associated with Transaction
+}
+
+state "confirmed" as confirmed #LightGreen {
+    confirmed : Payment successful (webhook received)
+    confirmed : Vehicle reserved for user
+    confirmed : Booking is active and finalized
+}
+
+state "canceled" as canceled #LightPink {
+    canceled : User or admin canceled
+    canceled : Or payment intent canceled by Stripe
+    canceled : Vehicle becomes available
+}
+
+pending --> confirmed : Stripe Webhook\n[payment_intent.succeeded]\nWebhookService updates booking
+note on link
+    **Trigger:** Stripe webhook event
+    **Webhook Handler:** 
+    handleStripeWebhookEvent()
+    
+    **Actions:**
+    1. Find transaction by providerPaymentId
+    2. Update transaction.status = "Completed"
+    3. Update booking.status = "confirmed"
+    
+    **Code Location:**
+    webhookService.js line 34-38
+end note
+
+pending --> canceled : User Cancels\nPUT /api/v1/user/booking/cancel/:id
+note on link
+    **Trigger:** User action
+    **Method:** BookingService.cancelBooking()
+    
+    **Action:**
+    findOneAndUpdate(
+      {_id: bookingId},
+      {status: "canceled"}
+    )
+    
+    **Code Location:**
+    bookingService.js line 72-78
+end note
+
+pending --> canceled : Stripe Webhook\n[payment_intent.canceled]
+note on link
+    **Trigger:** Stripe webhook event
+    
+    **Actions:**
+    1. Update transaction.status = "Cancelled"
+    2. Update booking.status = "canceled"
+    
+    **Reasons:**
+    • User abandoned payment
+    • Admin canceled via Stripe
+    
+    **Code Location:**
+    webhookService.js line 72-79
+end note
+
+confirmed --> canceled : User/Admin Cancels\ncancelBooking(bookingId)
+note on link
+    **Trigger:** User or admin action
+    **Allowed:** Before rental start date
+    
+    **Side Effects:**
+    • May trigger refund (future)
+    • Vehicle availability updated
+end note
+
+canceled --> [*] : Archived
+
+confirmed --> [*] : Rental Completed
+
+note right of pending
+    **Entry Conditions:**
+    • BookingRequest confirmed
+    • Transaction created
+    • Payment intent generated
+    
+    **Waiting For:**
+    • User to complete payment
+    • Webhook: payment_intent.succeeded
+    
+    **Important:**
+    If payment_intent.payment_failed,
+    booking stays "pending"
+    (NOT canceled automatically)
+end note
+
+note right of confirmed
+    **Entry Actions:**
+    • Transaction marked "Completed"
+    • Notifications sent (future)
+    
+    **Invariants:**
+    • Transaction.status = "Completed"
+    • Payment captured in Stripe
+    
+    **Immutable:**
+    Cannot go back to pending
+end note
+
+note right of canceled
+    **Entry Actions:**
+    • Release vehicle
+    • Update availability
+    
+    **Cleanup:**
+    • BookingRequest marked canceled
+    • May process refund
+end note
+
+note bottom of pending
+    **Key Insight:**
+    payment_intent.payment_failed does NOT
+    automatically cancel booking.
+    
+    Booking remains "pending" so user can
+    retry payment with new payment intent.
+end note
+
+@enduml

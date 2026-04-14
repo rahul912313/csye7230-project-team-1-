@@ -1,0 +1,176 @@
+@startuml Activity_Phase1_Request_Booking
+
+title Activity Diagram - Phase 1: Request Booking\n(Create Temporary Lock with Price Quote)
+
+|User|
+start
+:Browse Available Vehicles;
+:Select Vehicle;
+:Choose Start & End Dates;
+:Click "Check Availability";
+
+|System|
+:POST /api/v1/user/booking/request;
+
+:Verify JWT Token;
+
+if (Authenticated?) then (yes)
+    
+    :Extract userId from JWT;
+    
+    |BookingController|
+    :Validate Request Body;
+    note right
+        Required fields:
+        • vehicleId
+        • startDate  
+        • endDate
+    end note
+    
+    if (All Fields Present?) then (yes)
+        
+        |BookingService|
+        :Verify User Exists in DB;
+        
+        if (User Found?) then (yes)
+            
+            :Verify Vehicle Exists in DB;
+            
+            if (Vehicle Found?) then (yes)
+                
+                :Check Booking Conflicts;
+                note right
+                    Query Booking collection:
+                    • Same vehicle
+                    • Status: pending OR confirmed
+                    • Overlapping dates
+                end note
+                
+                if (No Conflicts?) then (yes)
+                    
+                    :Check Active Booking Requests;
+                    note right
+                        Query BookingRequest collection:
+                        • Same vehicle
+                        • Status: active
+                        • Not expired
+                        • Overlapping dates
+                    end note
+                    
+                    if (Not Locked by Others?) then (yes)
+                        
+                        :Calculate Rental Days;
+                        note right
+                            days = ceil((endDate - startDate) / 86400000)
+                        end note
+                        
+                        :Calculate Price Quote;
+                        note right
+                            priceQuote = days × vehicle.pricePerDay
+                        end note
+                        
+                        :Generate Unique Token;
+                        note right
+                            crypto.randomBytes(32).toString('hex')
+                        end note
+                        
+                        :Calculate Expiration Time;
+                        note right
+                            expiresAt = now + 15 minutes
+                        end note
+                        
+                        :Create BookingRequest Record;
+                        note right
+                            **BookingRequest Model:**
+                            • requestToken (unique)
+                            • user, vehicle
+                            • startDate, endDate
+                            • priceQuote
+                            • expiresAt
+                            • status: "active"
+                            
+                            **TTL Index:** Auto-deletes
+                            after expiration
+                        end note
+                        
+                        :Save to Database;
+                        
+                        |User|
+                        :Receive Quote Response;
+                        note right
+                            **Response (200 OK):**
+                            {
+                              "requestToken": "abc123...",
+                              "priceQuote": 160,
+                              "days": 4,
+                              "vehicle": {...},
+                              "validUntil": "15 min from now",
+                              "message": "Complete payment
+                                          within 15 minutes"
+                            }
+                        end note
+                        
+                        :Review Quote Details;
+                        
+                        if (Accept Quote?) then (yes)
+                            :Proceed to Confirm & Pay;
+                            note right
+                                User has 15 minutes
+                                before lock expires
+                            end note
+                            stop
+                        else (decline)
+                            :Close Booking;
+                            note right
+                                Request will auto-expire
+                                in 15 minutes
+                            end note
+                            stop
+                        endif
+                        
+                    else (locked)
+                        |User|
+                        :Show Error Message;
+                        note right
+                            "Vehicle temporarily locked
+                            by another user.
+                            Try again in few minutes."
+                        end note
+                        stop
+                    endif
+                    
+                else (conflicts found)
+                    |User|
+                    :Show Error Message;
+                    note right
+                        "Vehicle already booked
+                        for selected period"
+                    end note
+                    stop
+                endif
+                
+            else (vehicle not found)
+                |User|
+                :Show "Vehicle Not Found";
+                stop
+            endif
+            
+        else (user not found)
+            |User|
+            :Show "User Not Found";
+            stop
+        endif
+        
+    else (missing fields)
+        |User|
+        :Show Validation Error;
+        stop
+    endif
+    
+else (not authenticated)
+    |User|
+    :Redirect to Login;
+    stop
+endif
+
+@enduml

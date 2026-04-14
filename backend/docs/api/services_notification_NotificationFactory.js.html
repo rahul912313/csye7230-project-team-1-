@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: services/notification/NotificationFactory.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: services/notification/NotificationFactory.js</h1>
 
     
 
@@ -26,63 +26,46 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
+            <pre class="prettyprint source linenums"><code>const PushNotification = require("./PushNotification");
+const EmailNotification = require("./EmailNotification");
+const SMSNotification = require("./SMSNotification");
 
 /**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+ * NotificationFactory - Factory Pattern Implementation
+ * Creates different types of notification objects based on type
+ * 
+ * Design Pattern: Factory
+ * Purpose: Encapsulate object creation logic and provide flexibility
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
-  }
-
-  async findByEmail(email) {
-    try {
-      return await this.model.findOne({ email });
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+class NotificationFactory {
+  /**
+   * Create a notification instance based on type
+   * @param {string} type - Type of notification ('push', 'email', 'sms')
+   * @returns {Notification} Instance of the requested notification type
+   */
+  static createNotification(type) {
+    switch (type.toLowerCase()) {
+      case "push":
+        return new PushNotification();
+      case "email":
+        return new EmailNotification();
+      case "sms":
+        return new SMSNotification();
+      default:
+        throw new Error(`Unknown notification type: ${type}`);
     }
   }
 
-  async findByEmailWithPassword(email) {
-    try {
-      return await this.model.findOne({ email }).select("+password");
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
-    }
-  }
-
-  async findByDriverLicense(driverLicense) {
-    try {
-      return await this.model.findOne({ driverLicense });
-    } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
-    }
-  }
-
-  async updateFirebaseToken(userId, token) {
-    try {
-      return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
-        { new: true }
-      );
-    } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
-    }
-  }
-
-  async findByIdWithoutPassword(id) {
-    try {
-      return await this.model.findById(id).select("-password");
-    } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
-    }
+  /**
+   * Get all available notification types
+   * @returns {Array&lt;string>} List of supported notification types
+   */
+  static getAvailableTypes() {
+    return ["push", "email", "sms"];
   }
 }
 
-module.exports = UserRepository;
+module.exports = NotificationFactory;
 </code></pre>
         </article>
     </section>

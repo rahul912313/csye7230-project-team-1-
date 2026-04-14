@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: controllers/paymentStatusController.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: controllers/paymentStatusController.js</h1>
 
     
 
@@ -26,63 +26,76 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
+            <pre class="prettyprint source linenums"><code>const Booking = require("../models/booking");
+const Transaction = require("../models/transaction");
 
 /**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+ * Update booking status after successful payment
+ * This is called from frontend after Stripe confirms payment
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
-  }
+const updateBookingStatusAfterPayment = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { paymentIntentId } = req.body;
 
-  async findByEmail(email) {
-    try {
-      return await this.model.findOne({ email });
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+    // Verify the payment intent actually succeeded
+    if (!paymentIntentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment intent ID is required",
+      });
     }
-  }
 
-  async findByEmailWithPassword(email) {
-    try {
-      return await this.model.findOne({ email }).select("+password");
-    } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+    // Find the transaction to verify payment
+    const transaction = await Transaction.findOne({
+      providerPaymentId: paymentIntentId,
+    });
+
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+      });
     }
-  }
 
-  async findByDriverLicense(driverLicense) {
-    try {
-      return await this.model.findOne({ driverLicense });
-    } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
+    // Update booking status to confirmed
+    const booking = await Booking.findByIdAndUpdate(
+      bookingId,
+      { status: "confirmed" },
+      { new: true }
+    ).populate("vehicle user");
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
     }
-  }
 
-  async updateFirebaseToken(userId, token) {
-    try {
-      return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
-        { new: true }
-      );
-    } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
+    // Also update transaction status if needed
+    if (transaction.status !== "Completed") {
+      transaction.status = "Completed";
+      await transaction.save();
     }
-  }
 
-  async findByIdWithoutPassword(id) {
-    try {
-      return await this.model.findById(id).select("-password");
-    } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
-    }
+    res.status(200).json({
+      success: true,
+      message: "Booking confirmed successfully",
+      data: { booking },
+    });
+  } catch (error) {
+    console.error("Error updating booking status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update booking status",
+      error: error.message,
+    });
   }
-}
+};
 
-module.exports = UserRepository;
+module.exports = {
+  updateBookingStatusAfterPayment,
+};
 </code></pre>
         </article>
     </section>

@@ -1,66 +1,38 @@
-const express = require('express');
-const cors = require('cors');
-const db = require('./db');
-const rootRouter = require('./routes/index');
-const { errorHandler, notFound } = require('./middlewares/errorMiddleware');
+require("dotenv").config({ path: "./config/.env" });
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const db = require("./db");
+const rootRouter = require("./routes/index");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Basic route
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Welcome to QuickRent API',
-    version: '1.0.0',
-    status: 'Server is running'
-  });
-});
-
-// Health check with database status
-app.get('/health', (req, res) => {
-  const dbStats = db.getStats();
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    database: dbStats.connected ? 'Connected' : 'Disconnected',
-    dbInfo: dbStats
-  });
-});
-
-// API Routes
-app.use('/api', rootRouter);
-
-// Error handling - must be last
-app.use(notFound);
-app.use(errorHandler);
-
-// Start server
-const startServer = async () => {
-  try {
-    // Connect to database first
-    await db.connect();
-    console.log('✅ Database connected successfully');
-
-    // Start the Express server
-    app.listen(PORT, () => {
-      console.log(`🚀 QuickRent Backend Server running on port ${PORT}`);
-      console.log(`📍 API: http://localhost:${PORT}`);
-      console.log(`💚 Health Check: http://localhost:${PORT}/health`);
-      console.log(`👤 User API: http://localhost:${PORT}/api/user`);
-      console.log(`🔐 Admin API: http://localhost:${PORT}/api/admin`);
-    });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
+// CORS configuration (allow frontend)
+const corsOptions = {
+  origin: ["http://localhost:3002", "http://localhost:5175", "http://localhost:3000"],
+  credentials: true,
 };
 
-// Start the server
-startServer();
+app.use(cors(corsOptions));
 
-module.exports = app;
+// Webhook raw body parser middleware
+app.use("/api/v1/webhook", bodyParser.raw({ type: "application/json" }));
+
+// Parse JSON request bodies
+app.use(express.json());
+
+// Connect to the database using Singleton pattern
+db.connect();
+
+// Mount the routes
+app.use("/api/v1", rootRouter);
+
+// Start the server
+app
+  .listen(PORT, () => {
+    console.log(`The server is running at http://localhost:${PORT}`);
+  })
+  .on("error", (err) => {
+    console.error("Failed to start server:", err);
+  });

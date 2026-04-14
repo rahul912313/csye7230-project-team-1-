@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: services/payment/StripePaymentStrategy.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: services/payment/StripePaymentStrategy.js</h1>
 
     
 
@@ -26,63 +26,84 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
+            <pre class="prettyprint source linenums"><code>const PaymentStrategy = require("./PaymentStrategy");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 /**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+ * StripePaymentStrategy - Concrete Strategy for Stripe payments
+ * Implements the PaymentStrategy interface for Stripe-specific logic
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
+class StripePaymentStrategy extends PaymentStrategy {
+  constructor() {
+    super();
+    this.stripe = stripe;
   }
 
-  async findByEmail(email) {
+  async processPayment(amount, currency, metadata) {
     try {
-      return await this.model.findOne({ email });
+      // Convert metadata values to strings for Stripe
+      const stripeMetadata = {};
+      if (metadata) {
+        Object.keys(metadata).forEach(key => {
+          stripeMetadata[key] = String(metadata[key]);
+        });
+      }
+
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount: amount * 100, // Convert to smallest currency unit (cents)
+        currency: currency,
+        metadata: stripeMetadata,
+      });
+
+      return {
+        id: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount / 100,
+        currency: paymentIntent.currency,
+        provider: "stripe",
+        clientSecret: paymentIntent.client_secret,
+      };
     } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+      throw new Error(`Stripe payment error: ${error.message}`);
     }
   }
 
-  async findByEmailWithPassword(email) {
+  async refundPayment(paymentId, amount) {
     try {
-      return await this.model.findOne({ email }).select("+password");
+      const refund = await this.stripe.refunds.create({
+        payment_intent: paymentId,
+        amount: amount ? amount * 100 : undefined,
+      });
+
+      return {
+        id: refund.id,
+        status: refund.status,
+        amount: refund.amount / 100,
+        provider: "stripe",
+      };
     } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+      throw new Error(`Stripe refund error: ${error.message}`);
     }
   }
 
-  async findByDriverLicense(driverLicense) {
+  async getPaymentStatus(paymentId) {
     try {
-      return await this.model.findOne({ driverLicense });
-    } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
-    }
-  }
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentId);
 
-  async updateFirebaseToken(userId, token) {
-    try {
-      return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
-        { new: true }
-      );
+      return {
+        id: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount / 100,
+        currency: paymentIntent.currency,
+        provider: "stripe",
+      };
     } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
-    }
-  }
-
-  async findByIdWithoutPassword(id) {
-    try {
-      return await this.model.findById(id).select("-password");
-    } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
+      throw new Error(`Stripe status check error: ${error.message}`);
     }
   }
 }
 
-module.exports = UserRepository;
+module.exports = StripePaymentStrategy;
 </code></pre>
         </article>
     </section>

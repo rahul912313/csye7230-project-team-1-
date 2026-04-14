@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: repositories/VehicleRepository.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: repositories/VehicleRepository.js</h1>
 
     
 
@@ -29,60 +29,93 @@
             <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
 
 /**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+ * VehicleRepository - Repository for Vehicle-specific database operations
+ * Extends BaseRepository with Vehicle-specific methods
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
+class VehicleRepository extends BaseRepository {
+  constructor(vehicleModel) {
+    super(vehicleModel);
   }
 
-  async findByEmail(email) {
+  async findByLicensePlate(licensePlate) {
     try {
-      return await this.model.findOne({ email });
+      return await this.model.findOne({ licensePlate });
     } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+      throw new Error(`Error finding vehicle by license plate: ${error.message}`);
     }
   }
 
-  async findByEmailWithPassword(email) {
+  async findAvailable() {
     try {
-      return await this.model.findOne({ email }).select("+password");
+      return await this.model.find({ availability: true });
     } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+      throw new Error(`Error finding available vehicles: ${error.message}`);
     }
   }
 
-  async findByDriverLicense(driverLicense) {
+  async findByType(vehicleType) {
     try {
-      return await this.model.findOne({ driverLicense });
+      return await this.model.find({ Vehicletype: vehicleType });
     } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
+      throw new Error(`Error finding vehicles by type: ${error.message}`);
     }
   }
 
-  async updateFirebaseToken(userId, token) {
+  async findByPriceRange(minPrice, maxPrice) {
+    try {
+      return await this.model.find({
+        pricePerDay: { $gte: minPrice, $lte: maxPrice }
+      });
+    } catch (error) {
+      throw new Error(`Error finding vehicles by price range: ${error.message}`);
+    }
+  }
+
+  async updateAvailability(vehicleId, availability) {
     try {
       return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
+        vehicleId,
+        { availability },
         { new: true }
       );
     } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
+      throw new Error(`Error updating vehicle availability: ${error.message}`);
     }
   }
 
-  async findByIdWithoutPassword(id) {
+  async findByLocation(latitude, longitude, radiusInKm = 10) {
     try {
-      return await this.model.findById(id).select("-password");
+      // Calculate bounding box for the search radius
+      const earthRadiusKm = 6371;
+      const latDelta = (radiusInKm / earthRadiusKm) * (180 / Math.PI);
+      const lonDelta = (radiusInKm / (earthRadiusKm * Math.cos((latitude * Math.PI) / 180))) * (180 / Math.PI);
+
+      return await this.model.find({
+        'location.latitude': {
+          $gte: latitude - latDelta,
+          $lte: latitude + latDelta,
+        },
+        'location.longitude': {
+          $gte: longitude - lonDelta,
+          $lte: longitude + lonDelta,
+        },
+        availability: true,
+      });
     } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
+      throw new Error(`Error finding vehicles by location: ${error.message}`);
+    }
+  }
+
+  async findByCity(city) {
+    try {
+      return await this.model.find({ 'location.city': city });
+    } catch (error) {
+      throw new Error(`Error finding vehicles by city: ${error.message}`);
     }
   }
 }
 
-module.exports = UserRepository;
+module.exports = VehicleRepository;
 </code></pre>
         </article>
     </section>

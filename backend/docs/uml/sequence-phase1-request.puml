@@ -1,0 +1,160 @@
+@startuml Sequence_Booking_Request_Phase1
+
+title Sequence Diagram - Phase 1: Request Booking\n(Temporary Lock Creation)
+
+actor User
+participant "API" as API
+participant "AuthMiddleware" as Auth
+participant "BookingController" as Controller
+participant "BookingService" as Service
+participant "User Model" as UserModel
+participant "Vehicle Model" as VehicleModel
+participant "Booking Model" as BookingModel
+participant "BookingRequest\nModel" as RequestModel
+database "MongoDB" as DB
+
+User -> API: POST /api/v1/user/booking/request\n{vehicleId, startDate, endDate}
+activate API
+
+API -> Auth: authenticate(req, res, next)
+activate Auth
+Auth -> Auth: Extract & verify JWT token
+Auth -> Auth: Decode userId & userRole
+Auth --> API: req.userId = "698a71..."
+deactivate Auth
+
+API -> Controller: requestBooking(req, res)
+activate Controller
+
+Controller -> Controller: Extract userId from req
+Controller -> Controller: Extract {vehicleId, startDate, endDate} from body
+
+Controller -> Controller: Validate required fields
+
+Controller -> Service: requestBooking(userId, vehicleId, startDate, endDate)
+activate Service
+
+Service -> UserModel: findById(userId)
+activate UserModel
+UserModel -> DB: Query User
+activate DB
+DB --> UserModel: User document
+deactivate DB
+UserModel --> Service: user
+deactivate UserModel
+
+Service -> VehicleModel: findById(vehicleId)
+activate VehicleModel
+VehicleModel -> DB: Query Vehicle
+activate DB
+DB --> VehicleModel: Vehicle document
+deactivate DB
+VehicleModel --> Service: vehicle
+deactivate VehicleModel
+
+Service -> BookingModel: findOne({vehicle, status IN [pending, confirmed], overlapping dates})
+activate BookingModel
+note right
+    **Conflict Check Query:**
+    {
+      vehicle: vehicleId,
+      status: {$in: ['pending', 'confirmed']},
+      $or: [{
+        startDate: {$lt: endDate},
+        endDate: {$gt: startDate}
+      }]
+    }
+end note
+BookingModel -> DB: Query conflicts
+activate DB
+DB --> BookingModel: null (no conflicts)
+deactivate DB
+BookingModel --> Service: null
+deactivate BookingModel
+
+Service -> RequestModel: findOne({vehicle, status: active, not expired, overlapping})
+activate RequestModel
+note right
+    Check for temporary locks
+    by other users
+end note
+RequestModel -> DB: Query active requests
+activate DB
+DB --> RequestModel: null (no locks)
+deactivate DB
+RequestModel --> Service: null
+deactivate RequestModel
+
+Service -> Service: Calculate rental days
+note right
+    days = Math.ceil(
+      (endDate - startDate) / (1000*60*60*24)
+    )
+end note
+
+Service -> Service: Calculate price quote
+note right: priceQuote = vehicle.pricePerDay × days
+
+Service -> Service: Generate unique token
+note right: crypto.randomBytes(32).toString('hex')
+
+Service -> Service: Calculate expiration
+note right: expiresAt = new Date(now + 15 * 60 * 1000)
+
+Service -> RequestModel: create(BookingRequest)
+activate RequestModel
+RequestModel -> DB: Insert document
+activate DB
+note right
+    **BookingRequest Document:**
+    {
+      requestToken: "abc123...",
+      user: userId,
+      vehicle: vehicleId,
+      startDate, endDate,
+      priceQuote: 160,
+      expiresAt: "2026-02-10T04:45:00Z",
+      status: "active"
+    }
+    
+    **TTL Index on expiresAt:**
+    Auto-deletes after expiration
+end note
+DB --> RequestModel: Saved with _id
+deactivate DB
+RequestModel --> Service: bookingRequest
+deactivate RequestModel
+
+Service --> Controller: {requestToken, priceQuote, days, vehicle, validUntil}
+deactivate Service
+
+Controller --> API: 200 OK
+deactivate Controller
+note right
+    **Response:**
+    {
+      "success": true,
+      "data": {
+        "requestToken": "abc123...",
+        "priceQuote": 160,
+        "days": 4,
+        "vehicle": {id, model, type, pricePerDay},
+        "validUntil": "2026-02-10T04:45:00Z",
+        "message": "Complete payment within 15 min"
+      }
+    }
+end note
+
+API --> User: Quote with Request Token
+deactivate API
+
+User -> User: Review quote\n(15-minute window)
+
+note over User
+    User has 15 minutes to:
+    • Review quote details
+    • Proceed to Phase 2 (confirm)
+    • Or let request expire
+end note
+
+@enduml

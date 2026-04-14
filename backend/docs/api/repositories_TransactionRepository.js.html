@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: repositories/UserRepository.js</title>
+    <title>JSDoc: Source: repositories/TransactionRepository.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: repositories/UserRepository.js</h1>
+    <h1 class="page-title">Source: repositories/TransactionRepository.js</h1>
 
     
 
@@ -29,60 +29,68 @@
             <pre class="prettyprint source linenums"><code>const BaseRepository = require("./BaseRepository");
 
 /**
- * UserRepository - Repository for User-specific database operations
- * Extends BaseRepository with User-specific methods
+ * TransactionRepository - Repository for Transaction-specific database operations
+ * Extends BaseRepository with Transaction-specific methods
  */
-class UserRepository extends BaseRepository {
-  constructor(userModel) {
-    super(userModel);
+class TransactionRepository extends BaseRepository {
+  constructor(transactionModel) {
+    super(transactionModel);
   }
 
-  async findByEmail(email) {
+  async findByUserId(userId) {
     try {
-      return await this.model.findOne({ email });
+      return await this.model.find({ userId }).populate("userId");
     } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+      throw new Error(`Error finding transactions by user ID: ${error.message}`);
     }
   }
 
-  async findByEmailWithPassword(email) {
+  async findByBookingId(bookingId) {
     try {
-      return await this.model.findOne({ email }).select("+password");
+      return await this.model.find({ bookingId });
     } catch (error) {
-      throw new Error(`Error finding user by email: ${error.message}`);
+      throw new Error(`Error finding transactions by booking ID: ${error.message}`);
     }
   }
 
-  async findByDriverLicense(driverLicense) {
+  async findByStatus(status) {
     try {
-      return await this.model.findOne({ driverLicense });
+      return await this.model.find({ status });
     } catch (error) {
-      throw new Error(`Error finding user by driver license: ${error.message}`);
+      throw new Error(`Error finding transactions by status: ${error.message}`);
     }
   }
 
-  async updateFirebaseToken(userId, token) {
+  async findByProvider(provider) {
+    try {
+      return await this.model.find({ provider });
+    } catch (error) {
+      throw new Error(`Error finding transactions by provider: ${error.message}`);
+    }
+  }
+
+  async findByProviderPaymentId(providerPaymentId) {
+    try {
+      return await this.model.findOne({ providerPaymentId });
+    } catch (error) {
+      throw new Error(`Error finding transaction by provider payment ID: ${error.message}`);
+    }
+  }
+
+  async updateStatus(transactionId, status) {
     try {
       return await this.model.findByIdAndUpdate(
-        userId,
-        { firebaseToken: token },
+        transactionId,
+        { status },
         { new: true }
       );
     } catch (error) {
-      throw new Error(`Error updating firebase token: ${error.message}`);
-    }
-  }
-
-  async findByIdWithoutPassword(id) {
-    try {
-      return await this.model.findById(id).select("-password");
-    } catch (error) {
-      throw new Error(`Error finding user by ID: ${error.message}`);
+      throw new Error(`Error updating transaction status: ${error.message}`);
     }
   }
 }
 
-module.exports = UserRepository;
+module.exports = TransactionRepository;
 </code></pre>
         </article>
     </section>
