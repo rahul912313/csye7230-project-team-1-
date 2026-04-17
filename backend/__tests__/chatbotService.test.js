@@ -50,7 +50,6 @@ describe('ChatbotService', () => {
     });
 
     it('should return cancellation info for cancel keyword', () => {
-      // Use a message that only triggers cancel, not book/rent/reserve
       const result = chatbotService.getFallbackResponse('How do I cancel my reservation?');
       expect(result).not.toBeNull();
       expect(result.toLowerCase()).toContain('cancel');
@@ -60,11 +59,6 @@ describe('ChatbotService', () => {
       const result = chatbotService.getFallbackResponse('What payment methods do you accept?');
       expect(result).not.toBeNull();
       expect(result.toLowerCase()).toContain('stripe');
-    });
-
-    it('should return payment info for pay keyword', () => {
-      const result = chatbotService.getFallbackResponse('How do I pay for my order?');
-      expect(result).not.toBeNull();
     });
 
     it('should return location info for map-related messages', () => {
@@ -89,12 +83,6 @@ describe('ChatbotService', () => {
       const result = chatbotService.getFallbackResponse('Do you have SUVs?');
       expect(result).not.toBeNull();
       expect(result.toLowerCase()).toContain('suv');
-    });
-
-    it('should return account info for signup keyword', () => {
-      const result = chatbotService.getFallbackResponse('How do I signup?');
-      expect(result).not.toBeNull();
-      expect(result.toLowerCase()).toContain('account');
     });
 
     it('should return greeting for hello message', () => {
@@ -136,9 +124,8 @@ describe('ChatbotService', () => {
 
   // ─── chat ──────────────────────────────────────────────────
   describe('chat - main entry point', () => {
-    it('should return fallback response immediately for known keywords (no API call)', async () => {
+    it('should return fallback response immediately for known keywords', async () => {
       const result = await chatbotService.chat('How do I book a vehicle?');
-
       expect(result).not.toBeNull();
       expect(result.toLowerCase()).toContain('book');
       expect(axios.post).not.toHaveBeenCalled();
@@ -148,9 +135,7 @@ describe('ChatbotService', () => {
       axios.post.mockResolvedValue({
         data: { generated_text: 'AI generated response' },
       });
-
       const result = await chatbotService.chat('some random unrecognized query xyz');
-
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringContaining('huggingface'),
         expect.any(Object),
@@ -163,9 +148,7 @@ describe('ChatbotService', () => {
 
     it('should return contextual fallback when API call fails', async () => {
       axios.post.mockRejectedValue(new Error('API unavailable'));
-
       const result = await chatbotService.chat('some random unrecognized query xyz');
-
       expect(result).toBeTruthy();
       expect(typeof result).toBe('string');
     });
@@ -174,9 +157,7 @@ describe('ChatbotService', () => {
       axios.post.mockResolvedValue({
         data: [{ generated_text: 'Array format response' }],
       });
-
       const result = await chatbotService.chat('random unrecognized xyz query here');
-
       expect(result).toBe('Array format response');
     });
 

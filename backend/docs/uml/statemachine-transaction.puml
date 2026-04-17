@@ -1,0 +1,142 @@
+@startuml StateMachine_Transaction_Lifecycle
+
+title State Machine Diagram - Transaction Lifecycle\n(Payment Processing States)
+
+[*] --> Pending : Create Payment Intent\nPaymentService.createPaymentIntent()
+
+state "Pending" as pending #LightYellow {
+    pending : Payment intent created
+    pending : Waiting for user to complete payment
+    pending : Stripe client_secret issued
+    pending : Transaction record in database
+}
+
+state "Completed" as completed #LightGreen {
+    completed : Payment successfully processed
+    completed : Funds captured by Stripe
+    completed : Associated booking confirmed
+    completed : Final state (immutable)
+}
+
+state "Failed" as failed #LightPink {
+    failed : Payment processing failed
+    failed : Card declined or error occurred
+    failed : No funds captured
+    failed : Associated booking remains pending
+}
+
+state "Cancelled" as cancelled #LightGray {
+    cancelled : Payment intent canceled
+    cancelled : By user or system timeout
+    cancelled : No funds captured
+    cancelled : Associated booking may be canceled
+}
+
+pending --> Completed : Stripe Webhook\n[payment_intent.succeeded]\nWebhookService updates status
+note on link
+    **Webhook Event:** payment_intent.succeeded
+    
+    **Actions:**
+    1. Verify not duplicate
+    2. Update transaction.status = "Completed"
+    3. Update booking.status = "confirmed"
+    4. Send notifications
+    
+    **Idempotency:** Check if already processed
+end note
+
+pending --> Failed : Stripe Webhook\n[payment_intent.payment_failed]
+note on link
+    **Webhook Event:** payment_intent.payment_failed
+    
+    **Actions:**
+    1. Update transaction.status = "Failed"
+    2. Log payment error
+    3. Keep booking as "pending"
+    
+    **User Can:** Retry payment with new intent
+end note
+
+pending --> Cancelled : Stripe Webhook\n[payment_intent.canceled]
+note on link
+    **Webhook Event:** payment_intent.canceled
+    
+    **Actions:**
+    1. Update transaction.status = "Cancelled"
+    2. Update booking.status = "canceled"
+    
+    **Reasons:**
+    • User abandoned payment
+    • System timeout
+    • Admin cancellation
+end note
+
+pending --> Cancelled : Timeout\n[No payment within threshold]
+note on link
+    **Trigger:** Time-based (future implementation)
+    
+    **Condition:** Transaction pending > X minutes
+    
+    **Future:** Scheduled job to auto-cancel
+end note
+
+Completed --> [*] : Transaction Finalized
+note on link: Immutable state - no further changes
+
+Failed --> [*] : Archived
+note on link: Can create new transaction for retry
+
+Cancelled --> [*] : Archived
+
+note right of pending
+    **Entry Actions:**
+    • Create transaction record
+    • Store providerPaymentId
+    • Link to booking
+    • Set date = now
+    
+    **Invariants:**
+    • Must have valid userId
+    • Must have valid bookingId
+    • Must have providerPaymentId
+    • Amount > 0
+end note
+
+note right of Completed
+    **Entry Actions:**
+    • Mark booking as confirmed
+    • Trigger notification factory
+    • Send confirmations
+    
+    **Invariants:**
+    • Immutable (cannot change)
+    • Booking must be confirmed
+    • Funds captured in Stripe
+    
+    **Side Effects:**
+    • Customer charged
+    • Revenue recorded
+end note
+
+note right of Failed
+    **Entry Actions:**
+    • Log failure reason
+    • Preserve error details
+    
+    **Recovery:**
+    • User can create new payment
+    • Booking remains available
+    • Original booking still pending
+end note
+
+note right of Cancelled
+    **Entry Actions:**
+    • Release payment hold
+    • May update booking
+    
+    **Cleanup:**
+    • Free resources
+    • Archive for reporting
+end note
+
+@enduml

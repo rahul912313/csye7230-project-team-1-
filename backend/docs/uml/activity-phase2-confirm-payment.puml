@@ -1,0 +1,236 @@
+@startuml Activity_Phase2_Confirm_Payment
+
+title Activity Diagram - Phase 2: Confirm Booking & Payment\n(Atomic Operation with Webhook Processing)
+
+|User|
+start
+:Has Valid Request Token;
+note right: From Phase 1 (within 15 min)
+
+:Click "Confirm & Pay";
+
+|System|
+:POST /api/v1/user/booking/confirm;
+
+:Verify JWT Token;
+
+if (Authenticated?) then (yes)
+    
+    |BookingController|
+    :Validate Request Body;
+    note right: Required: requestToken
+    
+    if (Token Provided?) then (yes)
+        
+        |BookingService|
+        :Find BookingRequest by Token;
+        note right
+            Query:
+            • requestToken = provided token
+            • status = "active"
+        end note
+        
+        if (Request Found?) then (yes)
+            
+            :Check Expiration;
+            note right
+                Is expiresAt > now?
+            end note
+            
+            if (Not Expired?) then (yes)
+                
+                :Re-check Booking Conflicts;
+                note right
+                    **Double-Check Safety**
+                    Ensure no booking created
+                    since request was made
+                end note
+                
+                if (Still Available?) then (yes)
+                    
+                    ' === ATOMIC OPERATION START ===
+                    
+                    fork
+                        :Create Booking in DB;
+                        note right
+                            **Booking Model:**
+                            • user (from request)
+                            • vehicle (from request)
+                            • startDate, endDate
+                            • status: "pending"
+                        end note
+                        
+                    fork again
+                        :Update BookingRequest Status;
+                        note right: status: "confirmed"
+                        
+                    fork again
+                        |PaymentService|
+                        :Create Payment Intent;
+                        note right
+                            **Strategy Pattern:**
+                            Uses StripePaymentStrategy
+                            
+                            Stripe API:
+                            • amount: priceQuote × 100
+                            • currency: "usd"
+                            • metadata: {userId, bookingId}
+                        end note
+                        
+                    fork again
+                        |System|
+                        :Create Transaction Record;
+                        note right
+                            **Transaction Model:**
+                            • userId, bookingId
+                            • providerPaymentId
+                            • amount, currency
+                            • status: "Pending"
+                            • provider: "stripe"
+                        end note
+                    end fork
+                    
+                    ' === ATOMIC OPERATION END ===
+                    
+                    |User|
+                    :Receive Confirmation Response;
+                    note right
+                        **Response (201 Created):**
+                        {
+                          "booking": {...},
+                          "clientSecret": "pi_...",
+                          "transactionId": "...",
+                          "amount": 160
+                        }
+                    end note
+                    
+                    :Enter Card Details in UI;
+                    note right
+                        Frontend uses Stripe.js
+                        with clientSecret
+                    end note
+                    
+                    |Payment Gateway (Stripe)|
+                    :Process Card Payment;
+                    
+                    if (Payment Successful?) then (yes)
+                        
+                        :Trigger Webhook Event;
+                        note right
+                            Event: payment_intent.succeeded
+                        end note
+                        
+                        |System - WebhookController|
+                        :POST /api/v1/webhook;
+                        
+                        :Verify Stripe Signature;
+                        note right
+                            Security check to ensure
+                            webhook is from Stripe
+                        end note
+                        
+                        |WebhookService|
+                        :Find Transaction by providerPaymentId;
+                        
+                        :Check Already Processed;
+                        note right
+                            Idempotency check:
+                            If status = "Completed",
+                            ignore duplicate webhook
+                        end note
+                        
+                        if (Not Duplicate?) then (yes)
+                            
+                            fork
+                                :Update Transaction Status;
+                                note right: status: "Completed"
+                                
+                            fork again
+                                :Find Booking by bookingId;
+                                
+                                :Update Booking Status;
+                                note right: status: "confirmed"
+                            end fork
+                            
+                            :Save Changes to DB;
+                            
+                            |Notification System|
+                            :Send Notifications;
+                            note right
+                                **Factory Pattern:**
+                                • Push (Firebase)
+                                • Email
+                                • SMS
+                            end note
+                            
+                            |User|
+                            :Receive Push Notification;
+                            :Receive Email Confirmation;
+                            :View Confirmed Booking;
+                            
+                            #LightGreen:Booking Complete!;
+                            
+                            stop
+                            
+                        else (duplicate webhook)
+                            :Log Duplicate;
+                            :Return 200 OK;
+                            stop
+                        endif
+                        
+                    else (payment failed)
+                        
+                        :Trigger Webhook Event;
+                        note right
+                            Event: payment_intent.payment_failed
+                        end note
+                        
+                        |System - WebhookService|
+                        :Update Transaction Status;
+                        note right: status: "Failed"
+                        
+                        |User|
+                        #Pink:Payment Failed;
+                        :Show Error Message;
+                        :Option to Retry Payment;
+                        
+                        stop
+                    endif
+                    
+                else (became unavailable)
+                    :Update Request Status;
+                    note right: status: "canceled"
+                    
+                    |User|
+                    :Show "Vehicle Became Unavailable";
+                    stop
+                endif
+                
+            else (expired)
+                :Update Request Status;
+                note right: status: "expired"
+                
+                |User|
+                :Show "Request Expired - Create New Request";
+                stop
+            endif
+            
+        else (request not found)
+            |User|
+            :Show "Invalid or Expired Token";
+            stop
+        endif
+        
+    else (missing token)
+        |User|
+        :Show "Request Token Required";
+        stop
+    endif
+    
+else (not authenticated)
+    |User|
+    :Redirect to Login;
+    stop
+endif
+
+@enduml

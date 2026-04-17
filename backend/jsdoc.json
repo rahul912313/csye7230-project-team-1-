@@ -4,25 +4,20 @@
       "controllers",
       "services",
       "repositories",
-      "middlewares",
       "models",
-      "db.js",
-      "index.js"
+      "middlewares",
+      "routes"
     ],
-    "exclude": ["node_modules", "__tests__", "coverage"],
-    "includePattern": ".+\\.js$"
-  },
-  "opts": {
-    "destination": "./docs/api",
-    "recurse": true,
-    "readme": "./README.md"
+    "includePattern": ".+\\.js$",
+    "excludePattern": "(node_modules/|docs/)"
   },
   "plugins": ["plugins/markdown"],
+  "opts": {
+    "destination": "./docs/api",
+    "recurse": true
+  },
   "templates": {
     "cleverLinks": false,
     "monospaceLinks": false
-  },
-  "metadata": {
-    "title": "QuickRent API Documentation"
   }
 }

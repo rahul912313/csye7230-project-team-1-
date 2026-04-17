@@ -5,8 +5,7 @@ const jwt = require("jsonwebtoken");
  * AdminService - Service Layer for Admin Management
  * Implements business logic for admin operations
  * Uses Dependency Injection for better testability and modularity
- *
- * QuickRent Vehicle Rental Platform
+
  */
 class AdminService {
   constructor(adminModel, userModel, bookingModel) {
@@ -15,11 +14,6 @@ class AdminService {
     this.bookingModel = bookingModel;
   }
 
-  /**
-   * Create a new admin
-   * @param {Object} adminData - Admin data
-   * @returns {Promise<Object>} Created admin and token
-   */
   async createAdmin(adminData) {
     try {
       const existingAdmin = await this.adminModel.findOne({ email: adminData.email });
@@ -49,12 +43,6 @@ class AdminService {
     }
   }
 
-  /**
-   * Login admin
-   * @param {String} email - Admin email
-   * @param {String} password - Admin password
-   * @returns {Promise<Object>} Admin and token
-   */
   async loginAdmin(email, password) {
     try {
       const admin = await this.adminModel.findOne({ email }).select("+password");
@@ -80,10 +68,6 @@ class AdminService {
     }
   }
 
-  /**
-   * Get all users
-   * @returns {Promise<Array>} List of users
-   */
   async getAllUsers() {
     try {
       const users = await this.userModel.find({}).select("-password");
@@ -101,6 +85,7 @@ class AdminService {
   async getAllBookings() {
     try {
       if (!this.bookingModel) return [];
+
       const bookings = await this.bookingModel.find()
         .populate("userId", "name email")
         .sort({ createdAt: -1 });

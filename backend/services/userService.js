@@ -1,38 +1,22 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const UserRepository = require("../repositories/UserRepository");
-const User = require("../models/user");
 
 /**
  * UserService - Service Layer for User Management
  * Implements business logic for user operations
  * Uses Dependency Injection for better testability and modularity
- * 
- * QuickRent Vehicle Rental Platform
  */
 class UserService {
   constructor(userModel) {
     this.userModel = userModel;
-    this.userRepository = new UserRepository(userModel);
   }
 
-  /**
-   * Create a new user
-   * @param {Object} userData - User data
-   * @returns {Promise<Object>} Created user and token
-   */
   async createUser(userData) {
     try {
-      // Check if user exists by email
-      const existingUser = await this.userRepository.findByEmail(userData.email);
+      // Check if user exists
+      const existingUser = await this.userModel.findOne({ email: userData.email });
       if (existingUser) {
         throw new Error("User already exists with this email");
-      }
-
-      // Check if user exists by driver license
-      const existingLicense = await this.userRepository.findByDriverLicense(userData.driverLicense);
-      if (existingLicense) {
-        throw new Error("Driver license already registered");
       }
 
       // Hash password
@@ -42,15 +26,15 @@ class UserService {
       const role = "user";
 
       // Create user
-      const user = await this.userRepository.create({
+      const user = await this.userModel.create({
         ...userData,
         password: hashedPassword,
         role: role,
       });
 
-      // Generate token with userId and role
+      // Generating token with userId and role
       const token = jwt.sign(
-        { userId: user._id, role: user.role, email: user.email },
+        { userId: user._id, role: user.role },
         process.env.JWT_SECRET,
         {
           expiresIn: "24h",
@@ -64,16 +48,10 @@ class UserService {
     }
   }
 
-  /**
-   * Login user
-   * @param {String} email - User email
-   * @param {String} password - User password
-   * @returns {Promise<Object>} User and token
-   */
   async loginUser(email, password) {
     try {
-      // Find user with password
-      const user = await this.userRepository.findByEmailWithPassword(email);
+      // Find user
+      const user = await this.userModel.findOne({ email }).select("+password");
       if (!user) {
         throw new Error("User not found");
       }
@@ -86,7 +64,7 @@ class UserService {
 
       // Generate token with userId and role
       const token = jwt.sign(
-        { userId: user._id, role: user.role, email: user.email },
+        { userId: user._id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: "24h" }
       );
@@ -98,14 +76,9 @@ class UserService {
     }
   }
 
-  /**
-   * Get user by ID
-   * @param {String} userId - User ID
-   * @returns {Promise<Object>} User object
-   */
   async getUserById(userId) {
     try {
-      const user = await this.userRepository.findByIdWithoutPassword(userId);
+      const user = await this.userModel.findById(userId).select("-password");
       if (!user) {
         throw new Error("User not found");
       }
@@ -116,12 +89,6 @@ class UserService {
     }
   }
 
-  /**
-   * Update user
-   * @param {String} userId - User ID
-   * @param {Object} updateData - Data to update
-   * @returns {Promise<Object>} Updated user
-   */
   async updateUser(userId, updateData) {
     try {
       // If updating email, check if it exists and is not being used by another user
@@ -142,35 +109,16 @@ class UserService {
       }
 
       // Update user data
-      const user = await this.userRepository.update(
+      const user = await this.userModel.findByIdAndUpdate(
         userId,
-        updateData,
+        { $set: updateData },
         { new: true, runValidators: true }
-      );
+      ).select("-password");
 
       return user;
     } catch (e) {
       console.error(`Error updating user: `, e.message);
       throw new Error(`Error updating user: ${e.message}`);
-    }
-  }
-
-  /**
-   * Update Firebase token
-   * @param {String} userId - User ID
-   * @param {String} token - Firebase token
-   * @returns {Promise<Object>} Updated user
-   */
-  async updateFirebaseToken(userId, token) {
-    try {
-      const user = await this.userRepository.updateFirebaseToken(userId, token);
-      if (!user) {
-        throw new Error("User not found");
-      }
-      return user;
-    } catch (e) {
-      console.error("Error updating Firebase token:", e.message);
-      throw new Error(`Error updating Firebase token: ${e.message}`);
     }
   }
 }

@@ -172,7 +172,6 @@ describe('AdminService', () => {
       });
 
       const result = await adminService.getAllUsers();
-
       expect(result).toEqual([]);
     });
   });
@@ -191,15 +190,12 @@ describe('AdminService', () => {
       });
 
       const result = await adminService.getAllBookings();
-
       expect(result).toEqual(mockBookings);
     });
 
     it('should return empty array when bookingModel is not provided', async () => {
       const serviceWithoutBooking = new AdminService(mockAdminModel, mockUserModel, null);
-
       const result = await serviceWithoutBooking.getAllBookings();
-
       expect(result).toEqual([]);
     });
   });

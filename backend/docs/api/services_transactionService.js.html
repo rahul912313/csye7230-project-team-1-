@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: services/transactionService.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: services/transactionService.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * TransactionService - Service Layer for Transaction Management
+ * Implements business logic for transaction operations
+ * Uses Dependency Injection for better testability and modularity
+ */
+class TransactionService {
+  constructor(transactionModel) {
+    this.transactionModel = transactionModel;
+  }
+
+  async createTransaction(data) {
+    try {
+      const savedTransaction = await this.transactionModel.create(data);
+      return savedTransaction;
+    } catch (e) {
+      console.error("Transaction failed: ", e.message);
+      throw new Error(`Transaction failed: ${e.message}`);
+    }
+  }
+
+  async getTransactionById(transactionId) {
+    try {
+      const transaction = await this.transactionModel.findOne({ _id: transactionId });
+      return transaction;
+    } catch (e) {
+      console.error(
+        `Error fetching transaction with transaction id - ${transactionId} : `,
+        e.message
+      );
+      throw new Error(
+        `Error fetching transaction with transaction id - ${transactionId} : ${e.message}`
+      );
+    }
+  }
+
+  async getAllTransactionsOfUser(userId) {
+    try {
+      const transaction = await this.transactionModel.find({ userId: userId }).populate(
+        "userId"
+      );
+      return transaction;
+    } catch (e) {
+      console.error(`Error fetching transactions with ${userId} : `, e.message);
+      throw new Error(`Error fetching transactions with ${userId} : ${e.message}`);
+    }
+  }
+
+  async getAllTransactions() {
+    try {
+      const transactions = await this.transactionModel.find();
+      return transactions;
+    } catch (error) {
+      throw new Error("Error fetching transactions: " + error.message);
+    }
+  }
+
+  async updateTransactionStatus(transactionId, status) {
+    try {
+      const transaction = await this.transactionModel.findOneAndUpdate(
+        { _id: transactionId },
+        { status },
+        { new: true }
+      );
+      return transaction;
+    } catch (e) {
+      console.error(
+        `Error updating transaction with ${transactionId} : `,
+        e.message
+      );
+      throw new Error(
+        `Error updating transaction with ${transactionId} : ${e.message}`
+      );
+    }
+  }
+
+  async getTransactionByIdForUser(transactionId, userId) {
+    try {
+      // Find the transaction that belongs to the user
+      const transaction = await this.transactionModel.findOne({
+        _id: transactionId,
+        user: userId,
+      });
+
+      return transaction;
+    } catch (e) {
+      console.error(
+        `Error fetching transaction with ID ${transactionId}: `,
+        e.message
+      );
+      throw new Error(
+        `Error fetching transaction with ID ${transactionId}: ${e.message}`
+      );
+    }
+  }
+
+  async getTransactionsByUserId(userId) {
+    try {
+      // Fetch all transactions for the given userId
+      const transactions = await this.transactionModel.find({ userId });
+      return transactions;
+    } catch (error) {
+      throw new Error("Error fetching transactions for user: " + error.message);
+    }
+  }
+}
+
+module.exports = TransactionService;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="BookingRepository.html">BookingRepository</a></li><li><a href="EmailNotification.html">EmailNotification</a></li><li><a href="Notification.html">Notification</a></li><li><a href="NotificationFactory.html">NotificationFactory</a></li><li><a href="NotificationService.html">NotificationService</a></li><li><a href="PaymentService.html">PaymentService</a></li><li><a href="PaymentStrategy.html">PaymentStrategy</a></li><li><a href="PushNotification.html">PushNotification</a></li><li><a href="SMSNotification.html">SMSNotification</a></li><li><a href="StripePaymentStrategy.html">StripePaymentStrategy</a></li><li><a href="TransactionRepository.html">TransactionRepository</a></li><li><a href="TransactionService.html">TransactionService</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li><li><a href="VehicleRepository.html">VehicleRepository</a></li><li><a href="VehicleService.html">VehicleService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#bookingRequestSchema">bookingRequestSchema</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#createPaymentIntent">createPaymentIntent</a></li><li><a href="global.html#crypto">crypto</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#sendNotificationController">sendNotificationController</a></li><li><a href="global.html#stripeStrategy">stripeStrategy</a></li><li><a href="global.html#updateBookingStatusAfterPayment">updateBookingStatusAfterPayment</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Fri Apr 03 2026 13:07:06 GMT-0400 (Eastern Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
