@@ -1,0 +1,385 @@
+@startuml QuickRent_Complete_Class_Diagram
+
+!define TITLE QuickRent Vehicle Rental System - Complete Class Diagram
+title TITLE
+
+' Color scheme
+skinparam class {
+    BackgroundColor<<Singleton>> LightYellow
+    BackgroundColor<<Factory>> LightGreen
+    BackgroundColor<<Strategy>> LightBlue
+    BackgroundColor<<Repository>> LightPink
+    BackgroundColor<<Service>> LightCyan
+    BackgroundColor<<Model>> Wheat
+    BackgroundColor<<Controller>> LightGray
+    BackgroundColor<<Middleware>> Lavender
+}
+
+' ============================================
+' MODELS (Domain Layer)
+' ============================================
+
+package "Models (Domain Layer)" {
+    
+    class User <<Model>> {
+        - _id: ObjectId
+        - name: String
+        - email: String
+        - password: String
+        - role: String
+        - driverLicense: String
+        - firebaseToken: String
+        - createdAt: Date
+    }
+    
+    class Admin <<Model>> {
+        - _id: ObjectId
+        - name: String
+        - email: String
+        - password: String
+        - role: String
+        - permissions: String[]
+        - createdAt: Date
+    }
+    
+    class Vehicle <<Model>> {
+        - _id: ObjectId
+        - Vehicletype: String
+        - model: String
+        - pricePerDay: Number
+        - capacity: Number
+        - availability: Boolean
+        - licensePlate: String
+        - images: String[]
+        - location: Location
+        - createdAt: Date
+    }
+    
+    class Location {
+        - address: String
+        - latitude: Number
+        - longitude: Number
+        - city: String
+        - state: String
+        - zipCode: String
+    }
+    
+    class Booking <<Model>> {
+        - _id: ObjectId
+        - user: ObjectId
+        - vehicle: ObjectId
+        - bookingDate: Date
+        - startDate: Date
+        - endDate: Date
+        - status: String
+    }
+    
+    class Transaction <<Model>> {
+        - _id: ObjectId
+        - userId: ObjectId
+        - bookingId: ObjectId
+        - providerPaymentId: String
+        - amount: Number
+        - currency: String
+        - date: Date
+        - status: String
+        - provider: String
+    }
+    
+    Vehicle *-- Location
+    Booking --> User
+    Booking --> Vehicle
+    Transaction --> User
+    Transaction --> Booking
+}
+
+' ============================================
+' SINGLETON PATTERN
+' ============================================
+
+package "Singleton Pattern" {
+    
+    class DatabaseConnection <<Singleton>> {
+        - {static} instance: DatabaseConnection
+        - connection: mongoose.Connection
+        - isConnecting: Boolean
+        __
+        + connect(): Promise
+        + getConnection(): Connection
+        + isConnected(): Boolean
+        + disconnect(): Promise
+        + getStats(): Object
+    }
+    
+    note right of DatabaseConnection
+        Ensures only ONE instance
+        throughout application
+    end note
+}
+
+' ============================================
+' REPOSITORY PATTERN
+' ============================================
+
+package "Repository Pattern" {
+    
+    abstract class BaseRepository <<Repository>> {
+        # model: Model
+        __
+        + findAll(): Promise
+        + findById(id): Promise
+        + findOne(filter): Promise
+        + create(data): Promise
+        + update(id, data): Promise
+        + delete(id): Promise
+        + count(filter): Promise
+    }
+    
+    class UserRepository <<Repository>> {
+        + findByEmail(email): Promise
+        + findByDriverLicense(license): Promise
+        + updateFirebaseToken(userId, token): Promise
+    }
+    
+    class VehicleRepository <<Repository>> {
+        + findByLicensePlate(plate): Promise
+        + findAvailable(): Promise
+        + findByLocation(lat, lng, radius): Promise
+        + updateAvailability(id, status): Promise
+    }
+    
+    class BookingRepository <<Repository>> {
+        + findByUserId(userId): Promise
+        + findConflicting(vehicleId, start, end): Promise
+        + updateStatus(id, status): Promise
+    }
+    
+    class TransactionRepository <<Repository>> {
+        + findByUserId(userId): Promise
+        + findByProvider(provider): Promise
+        + updateStatus(id, status): Promise
+    }
+    
+    BaseRepository <|-- UserRepository
+    BaseRepository <|-- VehicleRepository
+    BaseRepository <|-- BookingRepository
+    BaseRepository <|-- TransactionRepository
+    
+    UserRepository ..> User
+    VehicleRepository ..> Vehicle
+    BookingRepository ..> Booking
+    TransactionRepository ..> Transaction
+    
+    BaseRepository ..> DatabaseConnection
+}
+
+' ============================================
+' STRATEGY PATTERN
+' ============================================
+
+package "Strategy Pattern" {
+    
+    abstract class PaymentStrategy <<Strategy>> {
+        + {abstract} processPayment(): Promise
+        + {abstract} refundPayment(): Promise
+        + {abstract} getPaymentStatus(): Promise
+    }
+    
+    class StripePaymentStrategy <<Strategy>> {
+        - stripe: Stripe
+        __
+        + processPayment(): Promise
+        + refundPayment(): Promise
+        + getPaymentStatus(): Promise
+    }
+    
+    class PaymentService <<Service>> {
+        - paymentStrategy: PaymentStrategy
+        - transactionModel: Model
+        __
+        + setPaymentStrategy(strategy): void
+        + createPaymentIntent(): Promise
+        + refundPayment(): Promise
+    }
+    
+    PaymentStrategy <|-- StripePaymentStrategy
+    PaymentService o--> PaymentStrategy
+    PaymentService ..> TransactionRepository
+    
+    note right of PaymentStrategy
+        Allows switching payment
+        providers at runtime
+    end note
+}
+
+' ============================================
+' FACTORY PATTERN
+' ============================================
+
+package "Factory Pattern" {
+    
+    abstract class Notification {
+        + {abstract} send(): Promise
+    }
+    
+    class PushNotification {
+        + send(token, message): Promise
+    }
+    
+    class EmailNotification {
+        + send(email, message): Promise
+    }
+    
+    class SMSNotification {
+        + send(phone, message): Promise
+    }
+    
+    class NotificationFactory <<Factory>> {
+        + {static} createNotification(type): Notification
+    }
+    
+    Notification <|-- PushNotification
+    Notification <|-- EmailNotification
+    Notification <|-- SMSNotification
+    NotificationFactory ..> Notification
+    
+    note right of NotificationFactory
+        Creates notification
+        objects based on type
+    end note
+}
+
+' ============================================
+' SERVICE LAYER
+' ============================================
+
+package "Service Layer" {
+    
+    class UserService <<Service>> {
+        - userModel: Model
+        __
+        + createUser(data): Promise
+        + loginUser(email, password): Promise
+        + getUserById(id): Promise
+        + updateUser(id, data): Promise
+    }
+    
+    class VehicleService <<Service>> {
+        - vehicleModel: Model
+        - bookingModel: Model
+        __
+        + addVehicle(data): Promise
+        + getAllVehicles(): Promise
+        + getVehicleById(id): Promise
+        + updateVehicle(id, data): Promise
+        + getVehiclesByLocation(lat, lng, radius): Promise
+        + calculateDistance(): Number
+    }
+    
+    class BookingService <<Service>> {
+        - bookingModel: Model
+        - userModel: Model
+        - vehicleModel: Model
+        __
+        + createBooking(data): Promise
+        + getBookingById(id): Promise
+        + cancelBooking(id): Promise
+        + checkConflictingBooking(): Promise
+    }
+    
+    class AdminService <<Service>> {
+        - adminModel: Model
+        - userModel: Model
+        __
+        + createAdmin(data): Promise
+        + loginAdmin(email, password): Promise
+        + getAllUsers(): Promise
+    }
+    
+    class TransactionService <<Service>> {
+        - transactionModel: Model
+        __
+        + createTransaction(data): Promise
+        + getTransactionById(id): Promise
+        + updateTransactionStatus(id, status): Promise
+    }
+    
+    class NotificationService <<Service>> {
+        - userModel: Model
+        __
+        + sendNotification(userId, message, type): Promise
+    }
+    
+    UserService ..> User
+    VehicleService ..> Vehicle
+    BookingService ..> Booking
+    AdminService ..> Admin
+    TransactionService ..> Transaction
+    NotificationService ..> NotificationFactory
+}
+
+' ============================================
+' CONTROLLERS
+' ============================================
+
+package "Controllers" {
+    
+    class UserController <<Controller>> {
+        + registerUser(req, res): void
+        + loginUser(req, res): void
+        + getUserProfile(req, res): void
+    }
+    
+    class VehicleController <<Controller>> {
+        + addVehicle(req, res): void
+        + getAllVehicles(req, res): void
+        + getVehiclesByLocation(req, res): void
+    }
+    
+    class BookingController <<Controller>> {
+        + createBooking(req, res): void
+        + getBookingById(req, res): void
+        + cancelBooking(req, res): void
+    }
+    
+    class AdminController <<Controller>> {
+        + adminSignup(req, res): void
+        + adminLogin(req, res): void
+        + getAllUsers(req, res): void
+    }
+    
+    class PaymentController <<Controller>> {
+        + createPayment(req, res): void
+    }
+    
+    UserController --> UserService
+    VehicleController --> VehicleService
+    BookingController --> BookingService
+    AdminController --> AdminService
+    PaymentController --> PaymentService
+}
+
+' ============================================
+' MIDDLEWARES
+' ============================================
+
+package "Middlewares" {
+    
+    class AuthMiddleware <<Middleware>> {
+        + authenticate(req, res, next): void
+    }
+    
+    class RoleMiddleware <<Middleware>> {
+        + checkRole(role): Function
+    }
+    
+    note right of AuthMiddleware
+        JWT verification
+        Adds userId to request
+    end note
+}
+
+AuthMiddleware ..> UserController
+RoleMiddleware ..> AdminController
+
+@enduml

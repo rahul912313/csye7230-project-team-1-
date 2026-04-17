@@ -42,167 +42,6 @@
 
 
 
-    <section>
-        <article><h1>QuickRent Backend</h1>
-<p>Vehicle rental platform backend API built with Node.js and Express.</p>
-<h2>🚀 Features</h2>
-<ul>
-<li><strong>Authentication &amp; Authorization</strong>: JWT-based auth with role-based access control</li>
-<li><strong>User Management</strong>: Registration, login, profile management</li>
-<li><strong>Admin Panel</strong>: User management, statistics, search functionality</li>
-<li><strong>Design Patterns</strong>: Singleton (DB), Repository (Data Access), Middleware Chain</li>
-<li><strong>Security</strong>: Password hashing with bcrypt, JWT tokens, input validation</li>
-</ul>
-<h2>📦 Tech Stack</h2>
-<ul>
-<li>Node.js &amp; Express</li>
-<li>MongoDB with Mongoose</li>
-<li>JWT for authentication</li>
-<li>Bcrypt for password hashing</li>
-</ul>
-<h2>🛠️ Installation</h2>
-<pre class="prettyprint source lang-bash"><code># Install dependencies
-npm install
-
-# Create .env file
-cp config/.env.example config/.env
-
-# Update .env with your MongoDB URI and JWT secret
-
-# Run development server
-npm run dev
-
-# Run production server
-npm start
-</code></pre>
-<h2>📚 API Endpoints</h2>
-<h3>Public Routes</h3>
-<h4>User Authentication</h4>
-<ul>
-<li><code>POST /api/users/register</code> - Register new user</li>
-<li><code>POST /api/users/login</code> - Login user</li>
-</ul>
-<h3>Protected Routes (Require Authentication)</h3>
-<h4>User Profile</h4>
-<ul>
-<li><code>GET /api/users/profile</code> - Get user profile</li>
-<li><code>PUT /api/users/profile</code> - Update user profile</li>
-<li><code>DELETE /api/users/account</code> - Delete user account</li>
-</ul>
-<h3>Admin Routes (Require Admin Role)</h3>
-<h4>User Management</h4>
-<ul>
-<li><code>GET /api/admin/users</code> - Get all users (paginated)</li>
-<li><code>GET /api/admin/users/search?q=term</code> - Search users</li>
-<li><code>GET /api/admin/users/:id</code> - Get user by ID</li>
-<li><code>PUT /api/admin/users/:id/block</code> - Block user</li>
-<li><code>PUT /api/admin/users/:id/unblock</code> - Unblock user</li>
-<li><code>DELETE /api/admin/users/:id</code> - Delete user</li>
-</ul>
-<h4>Statistics</h4>
-<ul>
-<li><code>GET /api/admin/stats/users</code> - Get user statistics</li>
-</ul>
-<h2>🔐 Authentication</h2>
-<p>All protected routes require a JWT token in the Authorization header:</p>
-<pre class="prettyprint source"><code>Authorization: Bearer &lt;your_jwt_token>
-</code></pre>
-<h2>📝 Request Examples</h2>
-<h3>Register User</h3>
-<pre class="prettyprint source lang-bash"><code>POST /api/users/register
-Content-Type: application/json
-
-{
-  &quot;name&quot;: &quot;John Doe&quot;,
-  &quot;email&quot;: &quot;john@example.com&quot;,
-  &quot;password&quot;: &quot;password123&quot;,
-  &quot;driverLicense&quot;: &quot;DL123456&quot;
-}
-</code></pre>
-<h3>Login</h3>
-<pre class="prettyprint source lang-bash"><code>POST /api/users/login
-Content-Type: application/json
-
-{
-  &quot;email&quot;: &quot;john@example.com&quot;,
-  &quot;password&quot;: &quot;password123&quot;
-}
-</code></pre>
-<h3>Get Profile (Protected)</h3>
-<pre class="prettyprint source lang-bash"><code>GET /api/users/profile
-Authorization: Bearer &lt;jwt_token>
-</code></pre>
-<h2>🗄️ Database Schema</h2>
-<h3>User Model</h3>
-<pre class="prettyprint source lang-javascript"><code>{
-  name: String,
-  email: String (unique),
-  password: String (hashed),
-  driverLicense: String (unique),
-  role: String (user/admin),
-  firebaseToken: String,
-  isBlocked: Boolean,
-  createdAt: Date,
-  updatedAt: Date
-}
-</code></pre>
-<h3>Admin Model</h3>
-<pre class="prettyprint source lang-javascript"><code>{
-  name: String,
-  email: String (unique),
-  password: String (hashed),
-  role: String (admin/super_admin),
-  permissions: [String],
-  createdAt: Date,
-  updatedAt: Date
-}
-</code></pre>
-<h2>🏗️ Project Structure</h2>
-<pre class="prettyprint source"><code>backend/
-├── config/                 # Configuration files
-│   └── .env               # Environment variables
-├── controllers/           # Request handlers
-│   ├── userController.js
-│   └── adminController.js
-├── middlewares/           # Express middlewares
-│   ├── authMiddleware.js
-│   ├── roleMiddleware.js
-│   ├── validationMiddleware.js
-│   └── errorMiddleware.js
-├── models/                # Mongoose models
-│   ├── user.js
-│   └── admin.js
-├── repositories/          # Data access layer
-│   ├── BaseRepository.js
-│   └── UserRepository.js
-├── routes/                # API routes
-│   ├── userRoutes.js
-│   └── adminRoutes.js
-├── services/              # Business logic
-│   ├── userService.js
-│   └── adminService.js
-├── utils/                 # Utility functions
-│   ├── passwordUtils.js
-│   └── jwtUtils.js
-├── db.js                  # Database connection (Singleton)
-└── index.js               # Server entry point
-</code></pre>
-<h2>🧪 Testing</h2>
-<pre class="prettyprint source lang-bash"><code>npm test
-</code></pre>
-<h2>🔧 Environment Variables</h2>
-<pre class="prettyprint source lang-env"><code>PORT=5000
-NODE_ENV=development
-MONGO_URI=mongodb://127.0.0.1:27017/quickrent
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRE=7d
-</code></pre>
-<h2>🤝 Contributing</h2>
-<p>This is an academic project for CSYE7230 at Northeastern University.</p>
-<h2>📄 License</h2>
-<p>See LICENSE file for details.</p></article>
-    </section>
-
 
 
 
@@ -211,13 +50,13 @@ JWT_EXPIRE=7d
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="ChatbotService.html">ChatbotService</a></li><li><a href="DatabaseConnection.html">DatabaseConnection</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#JWT_SECRET">JWT_SECRET</a></li><li><a href="global.html#adminLogin">adminLogin</a></li><li><a href="global.html#adminSchema">adminSchema</a></li><li><a href="global.html#adminService">adminService</a></li><li><a href="global.html#adminSignup">adminSignup</a></li><li><a href="global.html#asyncHandler">asyncHandler</a></li><li><a href="global.html#authMiddleware">authMiddleware</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#chatbotService">chatbotService</a></li><li><a href="global.html#errorHandler">errorHandler</a></li><li><a href="global.html#getAllBookings">getAllBookings</a></li><li><a href="global.html#getAllUsers">getAllUsers</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#getUserDetails">getUserDetails</a></li><li><a href="global.html#loginUser">loginUser</a></li><li><a href="global.html#notFound">notFound</a></li><li><a href="global.html#registerUser">registerUser</a></li><li><a href="global.html#roleMiddleware">roleMiddleware</a></li><li><a href="global.html#updateUserDetails">updateUserDetails</a></li><li><a href="global.html#userSchema">userSchema</a></li><li><a href="global.html#userService">userService</a></li><li><a href="global.html#validateEmail">validateEmail</a></li><li><a href="global.html#validateObjectId">validateObjectId</a></li><li><a href="global.html#validatePassword">validatePassword</a></li><li><a href="global.html#validateRequired">validateRequired</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="BookingRepository.html">BookingRepository</a></li><li><a href="EmailNotification.html">EmailNotification</a></li><li><a href="Notification.html">Notification</a></li><li><a href="NotificationFactory.html">NotificationFactory</a></li><li><a href="NotificationService.html">NotificationService</a></li><li><a href="PaymentService.html">PaymentService</a></li><li><a href="PaymentStrategy.html">PaymentStrategy</a></li><li><a href="PushNotification.html">PushNotification</a></li><li><a href="SMSNotification.html">SMSNotification</a></li><li><a href="StripePaymentStrategy.html">StripePaymentStrategy</a></li><li><a href="TransactionRepository.html">TransactionRepository</a></li><li><a href="TransactionService.html">TransactionService</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li><li><a href="VehicleRepository.html">VehicleRepository</a></li><li><a href="VehicleService.html">VehicleService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#bookingRequestSchema">bookingRequestSchema</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#createPaymentIntent">createPaymentIntent</a></li><li><a href="global.html#crypto">crypto</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#sendNotificationController">sendNotificationController</a></li><li><a href="global.html#stripeStrategy">stripeStrategy</a></li><li><a href="global.html#updateBookingStatusAfterPayment">updateBookingStatusAfterPayment</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Mar 24 2026 22:54:30 GMT-0400 (Eastern Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Fri Apr 03 2026 13:07:06 GMT-0400 (Eastern Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>

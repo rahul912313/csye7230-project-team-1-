@@ -28,30 +28,19 @@
         <article>
             <pre class="prettyprint source linenums"><code>const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const UserRepository = require("../repositories/UserRepository");
-const User = require("../models/user");
-const Admin = require("../models/admin");
 
 /**
- * AdminService - Service Layer for Admin Operations
- * Handles admin-specific business logic for user management
- * Uses Dependency Injection pattern
- * 
- * QuickRent Vehicle Rental Platform
+ * AdminService - Service Layer for Admin Management
+ * Implements business logic for admin operations
+ * Uses Dependency Injection for better testability and modularity
  */
 class AdminService {
   constructor(adminModel, userModel, bookingModel) {
     this.adminModel = adminModel;
     this.userModel = userModel;
     this.bookingModel = bookingModel;
-    this.userRepository = new UserRepository(userModel);
   }
 
-  /**
-   * Create a new admin
-   * @param {Object} adminData - Admin data
-   * @returns {Promise&lt;Object>} Created admin
-   */
   async createAdmin(adminData) {
     try {
       // Check if admin exists
@@ -78,12 +67,6 @@ class AdminService {
     }
   }
 
-  /**
-   * Login admin
-   * @param {String} email - Admin email
-   * @param {String} password - Admin password
-   * @returns {Promise&lt;Object>} Admin and token
-   */
   async loginAdmin(email, password) {
     try {
       // Find admin
@@ -100,7 +83,7 @@ class AdminService {
 
       // Generate token
       const token = jwt.sign(
-        { userId: admin._id, role: admin.role, email: admin.email },
+        { userId: admin._id, role: admin.role },
         process.env.JWT_SECRET,
         { expiresIn: "24h" }
       );
@@ -112,10 +95,6 @@ class AdminService {
     }
   }
 
-  /**
-   * Get all users
-   * @returns {Promise&lt;Array>} List of users
-   */
   async getAllUsers() {
     try {
       const users = await this.userModel.find({}).select("-password");
@@ -126,16 +105,8 @@ class AdminService {
     }
   }
 
-  /**
-   * Get all bookings (placeholder for Saumya's implementation)
-   * @returns {Promise&lt;Array>} List of bookings
-   */
   async getAllBookings() {
     try {
-      // This will be implemented by Saumya
-      if (!this.bookingModel) {
-        return [];
-      }
       const bookings = await this.bookingModel.find()
         .populate("userId", "name email")
         .sort({ createdAt: -1 });
@@ -158,13 +129,13 @@ module.exports = AdminService;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="ChatbotService.html">ChatbotService</a></li><li><a href="DatabaseConnection.html">DatabaseConnection</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#JWT_SECRET">JWT_SECRET</a></li><li><a href="global.html#adminLogin">adminLogin</a></li><li><a href="global.html#adminSchema">adminSchema</a></li><li><a href="global.html#adminService">adminService</a></li><li><a href="global.html#adminSignup">adminSignup</a></li><li><a href="global.html#asyncHandler">asyncHandler</a></li><li><a href="global.html#authMiddleware">authMiddleware</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#chatbotService">chatbotService</a></li><li><a href="global.html#errorHandler">errorHandler</a></li><li><a href="global.html#getAllBookings">getAllBookings</a></li><li><a href="global.html#getAllUsers">getAllUsers</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#getUserDetails">getUserDetails</a></li><li><a href="global.html#loginUser">loginUser</a></li><li><a href="global.html#notFound">notFound</a></li><li><a href="global.html#registerUser">registerUser</a></li><li><a href="global.html#roleMiddleware">roleMiddleware</a></li><li><a href="global.html#updateUserDetails">updateUserDetails</a></li><li><a href="global.html#userSchema">userSchema</a></li><li><a href="global.html#userService">userService</a></li><li><a href="global.html#validateEmail">validateEmail</a></li><li><a href="global.html#validateObjectId">validateObjectId</a></li><li><a href="global.html#validatePassword">validatePassword</a></li><li><a href="global.html#validateRequired">validateRequired</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="BookingRepository.html">BookingRepository</a></li><li><a href="EmailNotification.html">EmailNotification</a></li><li><a href="Notification.html">Notification</a></li><li><a href="NotificationFactory.html">NotificationFactory</a></li><li><a href="NotificationService.html">NotificationService</a></li><li><a href="PaymentService.html">PaymentService</a></li><li><a href="PaymentStrategy.html">PaymentStrategy</a></li><li><a href="PushNotification.html">PushNotification</a></li><li><a href="SMSNotification.html">SMSNotification</a></li><li><a href="StripePaymentStrategy.html">StripePaymentStrategy</a></li><li><a href="TransactionRepository.html">TransactionRepository</a></li><li><a href="TransactionService.html">TransactionService</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li><li><a href="VehicleRepository.html">VehicleRepository</a></li><li><a href="VehicleService.html">VehicleService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#bookingRequestSchema">bookingRequestSchema</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#createPaymentIntent">createPaymentIntent</a></li><li><a href="global.html#crypto">crypto</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#sendNotificationController">sendNotificationController</a></li><li><a href="global.html#stripeStrategy">stripeStrategy</a></li><li><a href="global.html#updateBookingStatusAfterPayment">updateBookingStatusAfterPayment</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Mar 24 2026 22:54:30 GMT-0400 (Eastern Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Fri Apr 03 2026 13:07:05 GMT-0400 (Eastern Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>

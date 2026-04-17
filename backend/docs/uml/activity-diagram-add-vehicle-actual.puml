@@ -1,0 +1,166 @@
+@startuml Activity_AddVehicle_Correct
+
+title Activity Diagram - Add Vehicle with Location & Images\n(Based on Actual Implementation)
+
+|Admin|
+start
+:Navigate to Add Vehicle Page;
+
+:Fill Vehicle Form;
+note right
+    - Vehicle Type
+    - Model
+    - Price Per Day
+    - Capacity
+    - License Plate
+    - Availability
+    - Location (address, lat, lng, city, state, zip)
+end note
+
+:Select Multiple Images;
+note right: Up to 5 images
+
+:Submit Form;
+
+|System|
+:Receive Request;
+note right: POST /api/v1/admin/vehicle
+
+:Check Authentication (JWT);
+
+if (Authenticated?) then (yes)
+    
+    :Check Admin Role;
+    note right: roleMiddleware("admin")
+    
+    if (Has Admin Role?) then (yes)
+        
+        |Multer Middleware|
+        :Process Image Upload;
+        note right
+            **upload.array("images", 5)**
+            - Validate file types
+            - Store in /uploads directory
+            - Generate filenames
+        end note
+        
+        :Store Files to Disk;
+        
+        |System - VehicleController|
+        :Parse Form Data;
+        note right
+            Convert types:
+            - pricePerDay → float
+            - capacity → int
+            - availability → boolean
+        end note
+        
+        :Validate Data (Zod Schema);
+        note right
+            **vehicleSchema.parse()**
+            - Required fields
+            - License plate format
+            - Price > 0, Capacity > 0
+            - Location object (optional)
+        end note
+        
+        if (Validation Passed?) then (yes)
+            
+            :Generate Image URLs;
+            note right
+                Map file.filename to
+                "/uploads/{filename}"
+            end note
+            
+            :Add Images to Vehicle Data;
+            
+            |System - VehicleService|
+            :Check License Plate Uniqueness;
+            note right
+                **VehicleRepository.findByLicensePlate()**
+            end note
+            
+            if (License Plate Unique?) then (yes)
+                
+                :Create Vehicle Record;
+                note right
+                    **VehicleService.addVehicle()**
+                    - Vehicletype, model
+                    - pricePerDay, capacity
+                    - licensePlate
+                    - images: [urls]
+                    - location: {
+                        address, latitude,
+                        longitude, city, state, zipCode
+                      }
+                    - availability: true
+                    - createdAt: now
+                end note
+                
+                :Save to Database;
+                note right
+                    Uses VehicleRepository
+                    to persist
+                end note
+                
+                |Admin|
+                :Receive Success Response;
+                note right
+                    Response: 201
+                    {
+                      "message": "Vehicle added successfully",
+                      "vehicle": {...}
+                    }
+                end note
+                
+                :Vehicle Now Available;
+                note right
+                    **Maps Feature Active**
+                    - Searchable by location
+                    - Users can find via
+                      "Search Nearby" API
+                end note
+                
+                stop
+                
+            else (duplicate plate)
+                |Admin|
+                :Show "License Plate Already Exists";
+                note right: Response: 400/500
+                
+                stop
+            endif
+            
+        else (validation failed)
+            |Admin|
+            :Show Validation Errors;
+            note right
+                Response: 400
+                Display Zod validation errors
+            end note
+            
+            stop
+        endif
+        
+    else (not admin)
+        |Admin|
+        :Show "Forbidden" Error;
+        note right
+            Response: 403
+            "You do not have required role"
+        end note
+        
+        stop
+    endif
+    
+else (not authenticated)
+    |Admin|
+    :Show "Unauthorized" Error;
+    note right: Response: 401/411
+    
+    :Redirect to Login;
+    
+    stop
+endif
+
+@enduml

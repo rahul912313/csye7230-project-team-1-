@@ -1,0 +1,144 @@
+@startuml StateMachine_BookingRequest_Lifecycle
+
+title State Machine Diagram - BookingRequest Lifecycle\n(Temporary Lock Management)
+
+[*] --> active : Request Booking\nBookingService.requestBooking()
+
+state "active" as active #LightBlue {
+    active : Temporary vehicle lock created
+    active : 15-minute expiration timer running
+    active : User can proceed to confirm
+    active : Prevents other users from booking
+}
+
+state "confirmed" as confirmed #LightGreen {
+    confirmed : User confirmed and created actual booking
+    confirmed : Lock converted to real booking
+    confirmed : BookingRequest archived
+}
+
+state "expired" as expired #LightGray {
+    expired : 15-minute window elapsed
+    expired : No confirmation from user
+    expired : Lock released automatically
+    expired : Vehicle becomes available again
+}
+
+state "canceled" as canceled #LightPink {
+    canceled : Conflict detected during confirmation
+    canceled : Or user abandoned the request
+    canceled : Lock released manually
+}
+
+active --> confirmed : User Confirms\nBookingService.confirmBooking()\n[within 15 minutes]
+note on link
+    **Trigger:** User action
+    **Precondition:** Token not expired
+    **Action:** 
+    1. Verify token valid
+    2. Re-check conflicts
+    3. Create actual Booking
+    4. Update status = "confirmed"
+end note
+
+active --> expired : Time Elapsed\n[expiresAt < now]
+note on link
+    **Trigger:** Time-based
+    **Condition:** 15 minutes passed
+    
+    **Action:**
+    1. System checks expiration
+    2. Update status = "expired"
+    
+    **TTL Index:** MongoDB auto-deletes
+    after expiration
+end note
+
+active --> expired : TTL Index\n[MongoDB auto-cleanup]
+note on link
+    **Automatic Cleanup:**
+    MongoDB TTL index removes
+    document after expiresAt
+    
+    No manual intervention needed
+end note
+
+active --> canceled : Conflict Detected\nduring confirmation attempt
+note on link
+    **Trigger:** confirmBooking() check
+    **Condition:** Vehicle became unavailable
+    **Action:** Update status = "canceled"
+    **Reason:** Another user booked first
+end note
+
+active --> canceled : User Abandons\n[voluntary cancellation]
+note on link
+    **Future Implementation:**
+    Explicit cancel endpoint
+    for active requests
+end note
+
+confirmed --> [*] : Booking Created\n(Archived)
+note on link
+    Request served its purpose
+    Can be deleted or archived
+end note
+
+expired --> [*] : Auto-Deleted by TTL
+note on link: MongoDB removes expired documents
+
+canceled --> [*] : Archived
+
+note right of active
+    **Entry Actions:**
+    • Generate unique requestToken
+    • Calculate expiresAt = now + 15 min
+    • Lock vehicle for user
+    • Store priceQuote
+    
+    **Invariants:**
+    • Must have valid user
+    • Must have valid vehicle
+    • expiresAt > createdAt
+    • No overlapping active requests
+    
+    **Timer:** 15-minute countdown
+end note
+
+note right of confirmed
+    **Entry Actions:**
+    • Mark as confirmed
+    • Actual Booking created
+    • Lock no longer needed
+    
+    **Cleanup:**
+    • Document can be archived
+    • Or deleted (served purpose)
+end note
+
+note right of expired
+    **Entry Actions:**
+    • Release vehicle lock
+    • Free for other users
+    
+    **Auto-Cleanup:**
+    • TTL index deletes document
+    • No manual cleanup needed
+    
+    **User Impact:**
+    • Must create new request
+    • Quote may have changed
+end note
+
+note right of canceled
+    **Entry Actions:**
+    • Release lock immediately
+    • Free vehicle for others
+    
+    **Reasons:**
+    • Vehicle became unavailable
+    • Conflict detected
+    • User voluntary cancel
+end note
+
+@enduml
