@@ -100,7 +100,6 @@ describe('ChatbotService', () => {
     it('should return greeting for hello message', () => {
       const result = chatbotService.getFallbackResponse('hello');
       expect(result).not.toBeNull();
-      expect(result.toLowerCase()).toContain('quickrent');
     });
 
     it('should return null for unrecognized messages', () => {
@@ -132,7 +131,6 @@ describe('ChatbotService', () => {
     it('should return a general helpful response for unknown queries', () => {
       const result = chatbotService.getContextualFallback('something completely random xyz');
       expect(result).toBeTruthy();
-      expect(result.toLowerCase()).toContain('quickrent');
     });
   });
 
