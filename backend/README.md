@@ -138,7 +138,7 @@ Pipeline configured in `.github/workflows/backend-ci.yml`.
 5. Run tests — `npm test`
 6. Security audit — `npm audit --audit-level=moderate`
 
-To trigger manually: push any commit to `main` or open a PR.
+To trigger the pipeline: push any commit to `main` or open a pull request to `main`.
 
 ## Deployment
 
