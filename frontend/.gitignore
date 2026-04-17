@@ -3,4 +3,27 @@ node_modules/
 out/
 .DS_Store
 *.log
-.env*.local
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+
+# Testing
+coverage/
+.nyc_output/
+
+# OS
+Thumbs.db
+
+# Build
+dist/
+.turbo/

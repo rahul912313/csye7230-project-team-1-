@@ -2,42 +2,27 @@ const AdminService = require("../services/adminService");
 const UserService = require("../services/userService");
 const Admin = require("../models/admin");
 const User = require("../models/user");
-// const Booking = require("../models/booking"); // Will be added by Saumya
+const Booking = require("../models/booking");
 const { z } = require("zod");
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-
-/**
- * Admin Controller for QuickRent
- * Handles HTTP requests for admin operations
- * Uses dependency injection with AdminService
- */
 
 // Initialize services with dependency injection
-const adminService = new AdminService(Admin, User, null); // Booking model will be added by Saumya
+const adminService = new AdminService(Admin, User, Booking);
 const userService = new UserService(User);
 
-// Validation schemas
 const adminSignupSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters long"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters long"),
 });
 
-const adminLoginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters long"),
-});
-
-/**
- * Admin Signup
- * @route POST /api/admin/signup
- * @access Public
- */
+// Admin Signup
 const adminSignup = async (req, res) => {
+  // Validate the request body
   const validationResult = adminSignupSchema.safeParse(req.body);
 
   if (!validationResult.success) {
+    // If validation fails
     return res.status(400).json({
       success: false,
       message: validationResult.error.errors
@@ -64,12 +49,14 @@ const adminSignup = async (req, res) => {
   }
 };
 
-/**
- * Admin Login
- * @route POST /api/admin/login
- * @access Public
- */
+// Admin Login
+const adminLoginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters long"),
+});
+
 const adminLogin = async (req, res) => {
+  // Validate
   const validationResult = adminLoginSchema.safeParse(req.body);
 
   if (!validationResult.success) {
@@ -104,15 +91,11 @@ const adminLogin = async (req, res) => {
   }
 };
 
-/**
- * Get all users
- * @route GET /api/admin/user
- * @access Private (Admin only)
- */
 const getAllUsers = async (req, res) => {
   try {
     const users = await adminService.getAllUsers();
 
+    // If no users are found
     if (!users || users.length === 0) {
       return res.status(404).json({
         success: false,
@@ -126,7 +109,9 @@ const getAllUsers = async (req, res) => {
       data: users,
     });
   } catch (error) {
+    // Log the error for debugging purposes
     console.error("Error fetching all users:", error.message);
+
     res.status(500).json({
       success: false,
       message: "Internal server error. Please try again later.",
@@ -134,15 +119,12 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-/**
- * Get all bookings
- * @route GET /api/admin/booking
- * @access Private (Admin only)
- */
+// Get All Bookings
 const getAllBookings = async (req, res) => {
   try {
     const bookings = await adminService.getAllBookings();
 
+    // If no bookings are found, return a message indicating no data
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({
         success: false,
@@ -156,7 +138,9 @@ const getAllBookings = async (req, res) => {
       data: bookings,
     });
   } catch (error) {
+    // Log the error for debugging purposes
     console.error("Error fetching all bookings:", error.message);
+
     res.status(500).json({
       success: false,
       message: "Internal server error. Please try again later.",
@@ -164,11 +148,6 @@ const getAllBookings = async (req, res) => {
   }
 };
 
-/**
- * Get user details by ID
- * @route GET /api/admin/user/:id
- * @access Private (Admin only)
- */
 const getUserDetails = async (req, res) => {
   const userId = req.params.id;
 
@@ -194,11 +173,6 @@ const getUserDetails = async (req, res) => {
   }
 };
 
-/**
- * Update user details by ID
- * @route PUT /api/admin/user/:id
- * @access Private (Admin only)
- */
 const updateUserDetails = async (req, res) => {
   const userId = req.params.id;
   const userData = req.body;

@@ -1,16 +1,10 @@
 const ChatbotService = require("../services/chatbotService");
 
-/**
- * Chatbot Controller for QuickRent
- * Handles AI chatbot interactions using Hugging Face API
- */
-
 const chatbotService = new ChatbotService();
 
 /**
  * Handle chatbot conversation
- * @route POST /api/chatbot
- * @access Public
+ * POST /api/v1/chatbot
  */
 const chat = async (req, res) => {
   try {
@@ -69,17 +63,16 @@ const chat = async (req, res) => {
 
 /**
  * Get chatbot status
- * @route GET /api/chatbot/status
- * @access Public
+ * GET /api/v1/chatbot/status
  */
 const getStatus = async (req, res) => {
   try {
     res.status(200).json({
       success: true,
       status: "online",
-      model: "microsoft/DialoGPT-medium",
+      model: "mistralai/Mistral-7B-Instruct-v0.2",
       provider: "Hugging Face",
-      message: "QuickRent AI Assistant is ready to help!",
+      message: "Chatbot is ready to help!",
     });
   } catch (error) {
     res.status(500).json({

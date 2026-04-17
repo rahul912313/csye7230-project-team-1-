@@ -1,0 +1,160 @@
+@startuml GoHaul_UseCase_Diagram_Clean
+
+title GoHaul Vehicle Rental System - Use Case Diagram
+
+left to right direction
+
+' Actors
+:User: as User
+:Admin: as Admin
+:Payment Gateway\n(Stripe): as Payment
+:Notification System\n(Firebase): as Notify
+
+' System boundary
+rectangle "QuickRent System" {
+    
+    ' ============================================
+    ' USER USE CASES - Simplified grouping
+    ' ============================================
+    
+    rectangle "User Operations" #LightBlue {
+        (Register & Login) as UC_Auth
+        (Manage Profile) as UC_Profile
+        (Browse Vehicles) as UC_Browse
+        (Search Vehicles by Location) as UC_Search #LightGreen
+        (View Vehicle Details) as UC_VehicleDetail
+        (Create Booking) as UC_CreateBook
+        (Manage My Bookings) as UC_ManageBook
+        (Make Payment) as UC_Pay
+        (View Transactions) as UC_Trans
+        (Chat with AI Assistant) as UC_Chat #LightGreen
+    }
+    
+    ' ============================================
+    ' ADMIN USE CASES - Simplified grouping
+    ' ============================================
+    
+    rectangle "Admin Operations" #LightYellow {
+        (Admin Login) as AC_Login
+        (Manage Vehicles) as AC_Vehicle
+        (Add Vehicle with Location) as AC_AddVehicle #LightGreen
+        (Manage Users) as AC_Users
+        (Manage All Bookings) as AC_Bookings
+        (Manage Transactions) as AC_Trans
+    }
+    
+    ' ============================================
+    ' SYSTEM OPERATIONS
+    ' ============================================
+    
+    rectangle "System Services" #WhiteSmoke {
+        (Authenticate User) as SYS_Auth
+        (Authorize Admin) as SYS_AuthZ
+        (Check Booking Conflicts) as SYS_Conflict
+        (Calculate Distance) as SYS_Distance
+        (Upload Images) as SYS_Upload
+    }
+    
+    ' ============================================
+    ' EXTERNAL SERVICES
+    ' ============================================
+    
+    rectangle "External Services" #Lavender {
+        (Process Payment) as PAY_Process
+        (Handle Webhook) as PAY_Webhook
+        (Send Notifications) as NOT_Send
+        (AI Chat Response) as AI_Chat
+    }
+}
+
+' ============================================
+' USER CONNECTIONS
+' ============================================
+
+User --> UC_Auth
+User --> UC_Profile
+User --> UC_Browse
+User --> UC_Search
+User --> UC_VehicleDetail
+User --> UC_CreateBook
+User --> UC_ManageBook
+User --> UC_Pay
+User --> UC_Trans
+User --> UC_Chat
+
+' ============================================
+' ADMIN CONNECTIONS
+' ============================================
+
+Admin --> AC_Login
+Admin --> AC_Vehicle
+Admin --> AC_AddVehicle
+Admin --> AC_Users
+Admin --> AC_Bookings
+Admin --> AC_Trans
+
+' ============================================
+' EXTERNAL SYSTEM CONNECTIONS
+' ============================================
+
+Payment --> PAY_Process
+Payment --> PAY_Webhook
+Notify --> NOT_Send
+
+' ============================================
+' INCLUDE RELATIONSHIPS (Key ones only)
+' ============================================
+
+UC_CreateBook ..> SYS_Auth : <<include>>
+UC_CreateBook ..> SYS_Conflict : <<include>>
+UC_CreateBook ..> PAY_Process : <<include>>
+
+UC_Search ..> SYS_Auth : <<include>>
+UC_Search ..> SYS_Distance : <<include>>
+
+AC_AddVehicle ..> SYS_Auth : <<include>>
+AC_AddVehicle ..> SYS_AuthZ : <<include>>
+AC_AddVehicle ..> SYS_Upload : <<include>>
+
+AC_Bookings ..> SYS_Auth : <<include>>
+AC_Bookings ..> SYS_AuthZ : <<include>>
+
+' ============================================
+' EXTEND RELATIONSHIPS
+' ============================================
+
+NOT_Send .> UC_CreateBook : <<extend>>
+NOT_Send .> UC_Pay : <<extend>>
+PAY_Webhook .> PAY_Process : <<extend>>
+UC_Chat ..> SYS_Auth : <<include>>
+UC_Chat ..> AI_Chat : <<include>>
+
+' ============================================
+' NOTES - Minimal and clear
+' ============================================
+
+note right of UC_Search
+  **Maps API Feature**
+  Search vehicles within
+  radius of user location
+end note
+
+note right of AC_AddVehicle
+  **Location & Images**
+  Set GPS coordinates
+  Upload multiple images
+end note
+
+note bottom of SYS_Conflict
+  **Smart Prevention**
+  Prevents double-booking
+end note
+
+legend top right
+  |= Symbol |= Meaning |
+  | <#LightGreen> | New Feature |
+  | <<include>> | Required step |
+  | <<extend>> | Optional step |
+endlegend
+
+@enduml

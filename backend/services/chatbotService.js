@@ -1,18 +1,11 @@
 const axios = require("axios");
 
-/**
- * ChatbotService - AI Chatbot Service for QuickRent
- * Integrates with Hugging Face API for conversational AI
- * Provides fallback responses for common queries
- * 
- * QuickRent Vehicle Rental Platform
- */
 class ChatbotService {
   constructor() {
     this.apiKey = process.env.HUGGINGFACE_API_KEY;
     
-    // System context about QuickRent
-    this.systemContext = `You are a helpful customer service assistant for QuickRent, a vehicle rental platform.
+    // System context about GoHaul
+    this.systemContext = `You are a helpful customer service assistant for GoHaul, a vehicle rental platform.
 
 Key Information:
 - Vehicle types: Sedans, SUVs, Trucks, Cargo Vans, Moving Trucks
@@ -25,12 +18,6 @@ Key Information:
 Be friendly, concise, and helpful.`;
   }
 
-  /**
-   * Process chat message with AI
-   * @param {String} userMessage - User's message
-   * @param {Array} conversationHistory - Previous conversation
-   * @returns {Promise<String>} AI response
-   */
   async chat(userMessage, conversationHistory = []) {
     try {
       // Try fallback first
@@ -76,11 +63,7 @@ Be friendly, concise, and helpful.`;
     }
   }
 
-  /**
-   * Get predefined fallback responses for common queries
-   * @param {String} message - User message
-   * @returns {String|null} Fallback response or null
-   */
+  // Enhanced fallback responses
   getFallbackResponse(message) {
     const lowerMsg = message.toLowerCase();
     
@@ -121,17 +104,13 @@ Be friendly, concise, and helpful.`;
     }
 
     if (lowerMsg.includes("help") || lowerMsg.includes("hi") || lowerMsg.includes("hello")) {
-      return "Hello! I'm here to help with QuickRent vehicle rentals. You can ask me about:\n• How to book a vehicle\n• Pricing and payment\n• Finding vehicles near you\n• Cancellation policies\n• Vehicle types\n• Account questions\n\nWhat would you like to know?";
+      return "Hello! I'm here to help with GoHaul vehicle rentals. You can ask me about:\n• How to book a vehicle\n• Pricing and payment\n• Finding vehicles near you\n• Cancellation policies\n• Vehicle types\n• Account questions\n\nWhat would you like to know?";
     }
     
     return null;
   }
 
-  /**
-   * Get contextual fallback when AI fails
-   * @param {String} message - User message
-   * @returns {String} Contextual fallback response
-   */
+  // Contextual fallback when AI fails
   getContextualFallback(message) {
     const lowerMsg = message.toLowerCase();
     
@@ -146,7 +125,7 @@ Be friendly, concise, and helpful.`;
     }
     
     // General
-    return "I can help you with QuickRent vehicle rentals! Ask me about booking a vehicle, pricing, payment options, finding vehicles near you, or cancellation policies. What would you like to know?";
+    return "I can help you with GoHaul vehicle rentals! Ask me about booking a vehicle, pricing, payment options, finding vehicles near you, or cancellation policies. What would you like to know?";
   }
 }
 

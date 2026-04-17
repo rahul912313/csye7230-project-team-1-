@@ -1,0 +1,261 @@
+@startuml Sequence_TwoPhase_Booking_Complete
+
+title Sequence Diagram - Two-Phase Booking System with Payment\n(Request -> Confirm -> Payment -> Webhook)
+
+actor User
+participant "API Gateway" as API
+participant "AuthMiddleware" as Auth
+participant "BookingController" as Controller
+participant "BookingService" as Service
+participant "BookingRequest\nModel" as RequestModel
+participant "Booking\nModel" as BookingModel
+participant "PaymentService" as PayService
+participant "StripePaymentStrategy" as StripeStrategy
+participant "Stripe API" as Stripe
+participant "Transaction\nModel" as TransModel
+participant "WebhookService" as Webhook
+participant "NotificationFactory" as NotifFactory
+participant "Firebase" as FCM
+database "MongoDB" as DB
+
+== Phase 1: Request Booking (Create Temporary Lock) ==
+
+User -> API: POST /api/v1/user/booking/request\n{vehicleId, startDate, endDate}
+activate API
+
+API -> Auth: Verify JWT Token
+activate Auth
+Auth --> API: userId extracted
+deactivate Auth
+
+API -> Controller: requestBooking(req, res)
+activate Controller
+
+Controller -> Service: requestBooking(userId, vehicleId, startDate, endDate)
+activate Service
+
+Service -> DB: Find User by userId
+activate DB
+DB --> Service: User found
+deactivate DB
+
+Service -> DB: Find Vehicle by vehicleId
+activate DB
+DB --> Service: Vehicle found
+deactivate DB
+
+Service -> DB: Check conflicts\n(Booking: status IN [pending, confirmed])
+activate DB
+DB --> Service: No conflicts
+deactivate DB
+
+Service -> DB: Check active BookingRequests\n(same vehicle, overlapping dates)
+activate DB
+DB --> Service: No active locks
+deactivate DB
+
+Service -> Service: Calculate days & priceQuote
+note right
+    days = (endDate - startDate) / 86400000
+    priceQuote = days x pricePerDay
+end note
+
+Service -> Service: Generate requestToken
+note right: crypto.randomBytes(32)
+
+Service -> RequestModel: create(BookingRequest)
+activate RequestModel
+RequestModel -> DB: Save BookingRequest
+activate DB
+DB --> RequestModel: Saved
+deactivate DB
+RequestModel --> Service: bookingRequest
+deactivate RequestModel
+
+Service --> Controller: {requestToken, priceQuote, validUntil}
+deactivate Service
+
+Controller --> API: 200 OK\n{requestToken, priceQuote, days, validUntil}
+deactivate Controller
+
+API --> User: Quote Response
+deactivate API
+
+User -> User: Review Quote\n(has 15 minutes)
+
+== Phase 2: Confirm Booking & Create Payment ==
+
+User -> API: POST /api/v1/user/booking/confirm\n{requestToken}
+activate API
+
+API -> Auth: Verify JWT Token
+activate Auth
+Auth --> API: Authenticated
+deactivate Auth
+
+API -> Controller: confirmBookingWithPayment(req, res)
+activate Controller
+
+Controller -> Service: confirmBooking(requestToken)
+activate Service
+
+Service -> DB: Find BookingRequest\n(requestToken, status="active")
+activate DB
+DB --> Service: bookingRequest found
+deactivate DB
+
+Service -> Service: Check expiration\n(now < expiresAt?)
+note right: Verify within 15-min window
+
+Service -> DB: Re-check conflicts\n(double-check safety)
+activate DB
+DB --> Service: Still available
+deactivate DB
+
+Service -> BookingModel: create(Booking)
+activate BookingModel
+BookingModel -> DB: Save Booking\n(status: "pending")
+activate DB
+DB --> BookingModel: Saved
+deactivate DB
+BookingModel --> Service: booking
+deactivate BookingModel
+
+Service -> RequestModel: Update status = "confirmed"
+activate RequestModel
+RequestModel -> DB: Update
+activate DB
+DB --> RequestModel: Updated
+deactivate DB
+deactivate RequestModel
+
+Service --> Controller: {booking, priceQuote}
+deactivate Service
+
+Controller -> PayService: createPaymentIntent(priceQuote, "usd", userId, bookingId)
+activate PayService
+
+PayService -> StripeStrategy: processPayment(amount, currency, {userId, bookingId})
+activate StripeStrategy
+
+StripeStrategy -> StripeStrategy: Convert metadata to strings
+note right
+    Stripe requires string values
+    Convert ObjectIds to strings
+end note
+
+StripeStrategy -> Stripe: paymentIntents.create({amount, currency, metadata})
+activate Stripe
+Stripe --> StripeStrategy: paymentIntent\n{id, client_secret, status}
+deactivate Stripe
+
+StripeStrategy --> PayService: {id, clientSecret, status, provider}
+deactivate StripeStrategy
+
+PayService -> TransModel: create(Transaction)
+activate TransModel
+TransModel -> DB: Save Transaction\n(status: "Pending")
+activate DB
+DB --> TransModel: Saved
+deactivate DB
+TransModel --> PayService: transaction
+deactivate TransModel
+
+PayService --> Controller: {paymentIntent, transaction}
+deactivate PayService
+
+Controller --> API: 201 Created\n{booking, clientSecret, transactionId, amount}
+deactivate Controller
+
+API --> User: Confirm Response
+deactivate API
+
+== Payment Processing ==
+
+User -> User: Enter Card Details\n(using Stripe.js)
+
+User -> Stripe: Submit Payment\n(with clientSecret)
+activate Stripe
+
+Stripe -> Stripe: Process Card Payment
+
+alt Payment Successful
+
+    Stripe -> API: Webhook: payment_intent.succeeded
+    activate API
+
+    API -> Webhook: handleStripeWebhookEvent(event)
+    activate Webhook
+
+    Webhook -> DB: Find Transaction\n(providerPaymentId, status="Completed")
+    activate DB
+    DB --> Webhook: Not found (not duplicate)
+    deactivate DB
+
+    Webhook -> TransModel: Update status = "Completed"
+    activate TransModel
+    TransModel -> DB: Update
+    activate DB
+    DB --> TransModel: Updated
+    deactivate DB
+    deactivate TransModel
+
+    Webhook -> BookingModel: Update status = "confirmed"
+    activate BookingModel
+    BookingModel -> DB: Update Booking
+    activate DB
+    DB --> BookingModel: Updated
+    deactivate DB
+    deactivate BookingModel
+
+    Webhook --> API: Transaction updated
+    deactivate Webhook
+
+    API --> Stripe: 200 OK (webhook received)
+    deactivate API
+
+    Stripe --> User: Payment Success
+    deactivate Stripe
+
+    Webhook -> NotifFactory: createNotification("push")
+    activate NotifFactory
+    NotifFactory --> Webhook: PushNotification instance
+    deactivate NotifFactory
+
+    Webhook -> FCM: Send Push Notification
+    activate FCM
+    FCM --> User: "Booking Confirmed!"
+    deactivate FCM
+
+    User -> User: View Confirmed Booking
+
+else Payment Failed
+
+    Stripe -> API: Webhook: payment_intent.payment_failed
+    activate API
+
+    API -> Webhook: handleStripeWebhookEvent(event)
+    activate Webhook
+
+    Webhook -> TransModel: Update status = "Failed"
+    activate TransModel
+    TransModel -> DB: Update
+    activate DB
+    DB --> TransModel: Updated
+    deactivate DB
+    deactivate TransModel
+
+    Webhook --> API: Transaction failed
+    deactivate Webhook
+
+    API --> Stripe: 200 OK
+    deactivate API
+
+    Stripe --> User: Payment Failed
+    deactivate Stripe
+
+    User -> User: Retry or Cancel
+
+end
+
+@enduml

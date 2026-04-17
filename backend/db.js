@@ -7,8 +7,6 @@ const mongoose = require("mongoose");
  *
  * Design Pattern: Singleton
  * Purpose: Manage database connection as a single shared resource
- * 
- * QuickRent Vehicle Rental Platform
  */
 class DatabaseConnection {
   constructor() {
@@ -56,7 +54,7 @@ class DatabaseConnection {
       this.connection = mongoose.connection;
       this.isConnecting = false;
 
-      console.log("✅ Connected to MongoDB successfully (QuickRent)");
+      console.log("✅ Connected to MongoDB successfully");
 
       // Handle connection events
       this.setupEventHandlers();
@@ -165,7 +163,7 @@ class DatabaseConnection {
 // Create the singleton instance
 const dbInstance = new DatabaseConnection();
 
-// Export the singleton instance
+// Export the singleton instance (don't freeze it, we need to modify properties)
 module.exports = dbInstance;
 
 /**

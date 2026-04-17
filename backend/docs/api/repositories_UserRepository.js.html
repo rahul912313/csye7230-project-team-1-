@@ -31,19 +31,12 @@
 /**
  * UserRepository - Repository for User-specific database operations
  * Extends BaseRepository with User-specific methods
- * 
- * QuickRent Vehicle Rental Platform
  */
 class UserRepository extends BaseRepository {
   constructor(userModel) {
     super(userModel);
   }
 
-  /**
-   * Find user by email
-   * @param {String} email - User email
-   * @returns {Promise&lt;Object>} User document without password
-   */
   async findByEmail(email) {
     try {
       return await this.model.findOne({ email });
@@ -52,11 +45,6 @@ class UserRepository extends BaseRepository {
     }
   }
 
-  /**
-   * Find user by email including password field
-   * @param {String} email - User email
-   * @returns {Promise&lt;Object>} User document with password
-   */
   async findByEmailWithPassword(email) {
     try {
       return await this.model.findOne({ email }).select("+password");
@@ -65,11 +53,6 @@ class UserRepository extends BaseRepository {
     }
   }
 
-  /**
-   * Find user by driver license number
-   * @param {String} driverLicense - Driver license number
-   * @returns {Promise&lt;Object>} User document
-   */
   async findByDriverLicense(driverLicense) {
     try {
       return await this.model.findOne({ driverLicense });
@@ -78,12 +61,6 @@ class UserRepository extends BaseRepository {
     }
   }
 
-  /**
-   * Update user's Firebase token for push notifications
-   * @param {String} userId - User ID
-   * @param {String} token - Firebase token
-   * @returns {Promise&lt;Object>} Updated user document
-   */
   async updateFirebaseToken(userId, token) {
     try {
       return await this.model.findByIdAndUpdate(
@@ -96,11 +73,6 @@ class UserRepository extends BaseRepository {
     }
   }
 
-  /**
-   * Find user by ID without returning password
-   * @param {String} id - User ID
-   * @returns {Promise&lt;Object>} User document without password
-   */
   async findByIdWithoutPassword(id) {
     try {
       return await this.model.findById(id).select("-password");
@@ -121,13 +93,13 @@ module.exports = UserRepository;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="ChatbotService.html">ChatbotService</a></li><li><a href="DatabaseConnection.html">DatabaseConnection</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#JWT_SECRET">JWT_SECRET</a></li><li><a href="global.html#adminLogin">adminLogin</a></li><li><a href="global.html#adminSchema">adminSchema</a></li><li><a href="global.html#adminService">adminService</a></li><li><a href="global.html#adminSignup">adminSignup</a></li><li><a href="global.html#asyncHandler">asyncHandler</a></li><li><a href="global.html#authMiddleware">authMiddleware</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#chatbotService">chatbotService</a></li><li><a href="global.html#errorHandler">errorHandler</a></li><li><a href="global.html#getAllBookings">getAllBookings</a></li><li><a href="global.html#getAllUsers">getAllUsers</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#getUserDetails">getUserDetails</a></li><li><a href="global.html#loginUser">loginUser</a></li><li><a href="global.html#notFound">notFound</a></li><li><a href="global.html#registerUser">registerUser</a></li><li><a href="global.html#roleMiddleware">roleMiddleware</a></li><li><a href="global.html#updateUserDetails">updateUserDetails</a></li><li><a href="global.html#userSchema">userSchema</a></li><li><a href="global.html#userService">userService</a></li><li><a href="global.html#validateEmail">validateEmail</a></li><li><a href="global.html#validateObjectId">validateObjectId</a></li><li><a href="global.html#validatePassword">validatePassword</a></li><li><a href="global.html#validateRequired">validateRequired</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="BookingRepository.html">BookingRepository</a></li><li><a href="EmailNotification.html">EmailNotification</a></li><li><a href="Notification.html">Notification</a></li><li><a href="NotificationFactory.html">NotificationFactory</a></li><li><a href="NotificationService.html">NotificationService</a></li><li><a href="PaymentService.html">PaymentService</a></li><li><a href="PaymentStrategy.html">PaymentStrategy</a></li><li><a href="PushNotification.html">PushNotification</a></li><li><a href="SMSNotification.html">SMSNotification</a></li><li><a href="StripePaymentStrategy.html">StripePaymentStrategy</a></li><li><a href="TransactionRepository.html">TransactionRepository</a></li><li><a href="TransactionService.html">TransactionService</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li><li><a href="VehicleRepository.html">VehicleRepository</a></li><li><a href="VehicleService.html">VehicleService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#bookingRequestSchema">bookingRequestSchema</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#createPaymentIntent">createPaymentIntent</a></li><li><a href="global.html#crypto">crypto</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#sendNotificationController">sendNotificationController</a></li><li><a href="global.html#stripeStrategy">stripeStrategy</a></li><li><a href="global.html#updateBookingStatusAfterPayment">updateBookingStatusAfterPayment</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Mar 24 2026 22:54:30 GMT-0400 (Eastern Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Fri Apr 03 2026 13:07:06 GMT-0400 (Eastern Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>
