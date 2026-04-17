@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
  * AdminService - Service Layer for Admin Management
  * Implements business logic for admin operations
  * Uses Dependency Injection for better testability and modularity
+
  */
 class AdminService {
   constructor(adminModel, userModel, bookingModel) {
@@ -15,24 +16,27 @@ class AdminService {
 
   async createAdmin(adminData) {
     try {
-      // Check if admin exists
       const existingAdmin = await this.adminModel.findOne({ email: adminData.email });
       if (existingAdmin) {
         throw new Error("Admin already exists with this email");
       }
 
-      // Hash password
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(adminData.password, salt);
 
-      // Create admin and set role as "admin"
       const admin = await this.adminModel.create({
         ...adminData,
         password: hashedPassword,
         role: "admin",
       });
 
-      return admin;
+      const token = jwt.sign(
+        { userId: admin._id, role: admin.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      return { admin, token };
     } catch (e) {
       console.error("Error creating admin: ", e.message);
       throw new Error(`Error creating admin: ${e.message}`);
@@ -41,19 +45,16 @@ class AdminService {
 
   async loginAdmin(email, password) {
     try {
-      // Find admin
       const admin = await this.adminModel.findOne({ email }).select("+password");
       if (!admin) {
         throw new Error("Invalid credentials");
       }
 
-      // Check password
       const isValidPassword = await bcrypt.compare(password, admin.password);
       if (!isValidPassword) {
         throw new Error("Invalid credentials");
       }
 
-      // Generate token
       const token = jwt.sign(
         { userId: admin._id, role: admin.role },
         process.env.JWT_SECRET,
@@ -77,8 +78,14 @@ class AdminService {
     }
   }
 
+  /**
+   * Get all bookings
+   * @returns {Promise<Array>} List of bookings
+   */
   async getAllBookings() {
     try {
+      if (!this.bookingModel) return [];
+
       const bookings = await this.bookingModel.find()
         .populate("userId", "name email")
         .sort({ createdAt: -1 });

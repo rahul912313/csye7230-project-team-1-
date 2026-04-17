@@ -50,9 +50,12 @@ describe('AdminService', () => {
       bcrypt.hash.mockResolvedValue('hashed_password');
       mockAdminModel.create.mockResolvedValue(mockCreated);
 
+      jwt.sign.mockReturnValue('mock_token');
       const result = await adminService.createAdmin(adminData);
 
-      expect(result).toEqual(mockCreated);
+      expect(result).toHaveProperty('admin');
+      expect(result).toHaveProperty('token');
+      expect(result.admin).toEqual(mockCreated);
       expect(mockAdminModel.findOne).toHaveBeenCalledWith({ email: adminData.email });
       expect(bcrypt.hash).toHaveBeenCalledWith(adminData.password, 'salt');
       expect(mockAdminModel.create).toHaveBeenCalledWith(

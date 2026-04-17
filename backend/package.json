@@ -14,6 +14,12 @@
   "license": "ISC",
   "jest": {
     "testEnvironment": "node",
+    "setupFilesAfterEnv": ["./__tests__/setup.js"],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "__tests__/notificationFactory.test.js"
+    ],
+
     "coveragePathIgnorePatterns": [
       "/node_modules/"
     ],

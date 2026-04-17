@@ -87,11 +87,14 @@ GitHub Actions pipeline is configured in `.github/workflows/ci.yml`.
 
 **Pipeline steps:**
 1. Checkout repository
-2. Setup Node.js (18.x and 20.x matrix)
-3. Install dependencies (`npm ci`)
-4. Run linter (if configured)
-5. Run tests (`npm test`)
-6. Security audit (`npm audit`)
+2. Setup Node.js (matrix: 18.x and 20.x)
+3. Install dependencies — `npm ci`
+4. Run linter — `npm run lint` (if configured)
+5. Run tests — `npm test`
+6. Security audit — `npm audit --audit-level=moderate`
+
+To trigger the pipeline: push any commit to `main` or open a pull request to `main`.
+
 
 ## Deployment
 

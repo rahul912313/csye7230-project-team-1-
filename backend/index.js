@@ -8,11 +8,29 @@ const rootRouter = require("./routes/index");
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// CORS configuration (allow frontend)
-const corsOptions = {
-  origin: ["http://localhost:3002", "http://localhost:5175", "http://localhost:3000"],
-  credentials: true,
-};
+// Middleware
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3002',
+    'https://quickrent-seven.vercel.app',
+    'https://quickrent-dpw3zn9a8-rahulptl556s-projects.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Basic route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Welcome to QuickRent API',
+    version: '1.0.0',
+    status: 'Server is running'
+  });
+});
+
 
 app.use(cors(corsOptions));
 
