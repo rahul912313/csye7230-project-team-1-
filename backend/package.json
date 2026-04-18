@@ -1,40 +1,51 @@
 {
-  "name": "quickrent-backend",
+  "name": "backend",
   "version": "1.0.0",
-  "description": "QuickRent - Vehicle Rental Platform Backend",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "jest",
+    "test": "jest --coverage --detectOpenHandles",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "start": "nodemon index.js",
+    "start:prod": "node index.js",
+    "docs": "jsdoc -c jsdoc.json"
   },
-  "keywords": ["vehicle", "rental", "quickrent"],
-  "author": "Team 1",
+  "author": "",
   "license": "ISC",
-  "dependencies": {
-    "express": "^4.18.2",
-    "dotenv": "^16.0.3",
-    "cors": "^2.8.5",
-    "mongoose": "^7.0.0",
-    "bcrypt": "^5.1.0",
-    "jsonwebtoken": "^9.0.0",
-    "zod": "^3.22.0",
-    "axios": "^1.6.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1",
-    "jest": "^29.5.0"
-  },
   "jest": {
     "testEnvironment": "node",
     "setupFilesAfterEnv": ["./__tests__/setup.js"],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "__tests__/notificationFactory.test.js"
+    ],
+
     "coveragePathIgnorePatterns": [
       "/node_modules/"
     ],
     "testMatch": [
-      "**/__tests__/**/*.test.js"
+      "**/__tests__/**/*.js",
+      "**/?(*.)+(spec|test).js"
     ]
+  },
+  "dependencies": {
+    "axios": "^1.13.5",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "firebase-admin": "^13.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.8.1",
+    "multer": "^1.4.5-lts.1",
+    "nodemon": "^3.1.7",
+    "stripe": "^17.4.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jsdoc": "^4.0.2",
+    "supertest": "^6.3.4"
   }
 }

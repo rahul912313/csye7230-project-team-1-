@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: services/userService.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: services/userService.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+/**
+ * UserService - Service Layer for User Management
+ * Implements business logic for user operations
+ * Uses Dependency Injection for better testability and modularity
+ */
+class UserService {
+  constructor(userModel) {
+    this.userModel = userModel;
+  }
+
+  async createUser(userData) {
+    try {
+      // Check if user exists
+      const existingUser = await this.userModel.findOne({ email: userData.email });
+      if (existingUser) {
+        throw new Error("User already exists with this email");
+      }
+
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(userData.password, salt);
+
+      const role = "user";
+
+      // Create user
+      const user = await this.userModel.create({
+        ...userData,
+        password: hashedPassword,
+        role: role,
+      });
+
+      // Generating token with userId and role
+      const token = jwt.sign(
+        { userId: user._id, role: user.role },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "24h",
+        }
+      );
+
+      return { user, token };
+    } catch (e) {
+      console.error("Error creating user: ", e.message);
+      throw new Error(`Error creating user: ${e.message}`);
+    }
+  }
+
+  async loginUser(email, password) {
+    try {
+      // Find user
+      const user = await this.userModel.findOne({ email }).select("+password");
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Check password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        throw new Error("Invalid credentials");
+      }
+
+      // Generate token with userId and role
+      const token = jwt.sign(
+        { userId: user._id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      return { user, token };
+    } catch (e) {
+      console.error("Login failed: ", e.message);
+      throw new Error(`Login failed: ${e.message}`);
+    }
+  }
+
+  async getUserById(userId) {
+    try {
+      const user = await this.userModel.findById(userId).select("-password");
+      if (!user) {
+        throw new Error("User not found");
+      }
+      return user;
+    } catch (e) {
+      console.error(`Error fetching user with id ${userId}: `, e.message);
+      throw new Error(`Error fetching user: ${e.message}`);
+    }
+  }
+
+  async updateUser(userId, updateData) {
+    try {
+      // If updating email, check if it exists and is not being used by another user
+      if (updateData.email) {
+        const existingUser = await this.userModel.findOne({
+          email: updateData.email,
+          _id: { $ne: userId },
+        });
+        if (existingUser) {
+          throw new Error("Email already in use");
+        }
+      }
+
+      // If updating password, hash it
+      if (updateData.password) {
+        const salt = await bcrypt.genSalt(10);
+        updateData.password = await bcrypt.hash(updateData.password, salt);
+      }
+
+      // Update user data
+      const user = await this.userModel.findByIdAndUpdate(
+        userId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      ).select("-password");
+
+      return user;
+    } catch (e) {
+      console.error(`Error updating user: `, e.message);
+      throw new Error(`Error updating user: ${e.message}`);
+    }
+  }
+}
+
+module.exports = UserService;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="BookingRepository.html">BookingRepository</a></li><li><a href="EmailNotification.html">EmailNotification</a></li><li><a href="Notification.html">Notification</a></li><li><a href="NotificationFactory.html">NotificationFactory</a></li><li><a href="NotificationService.html">NotificationService</a></li><li><a href="PaymentService.html">PaymentService</a></li><li><a href="PaymentStrategy.html">PaymentStrategy</a></li><li><a href="PushNotification.html">PushNotification</a></li><li><a href="SMSNotification.html">SMSNotification</a></li><li><a href="StripePaymentStrategy.html">StripePaymentStrategy</a></li><li><a href="TransactionRepository.html">TransactionRepository</a></li><li><a href="TransactionService.html">TransactionService</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li><li><a href="VehicleRepository.html">VehicleRepository</a></li><li><a href="VehicleService.html">VehicleService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#bookingRequestSchema">bookingRequestSchema</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#createPaymentIntent">createPaymentIntent</a></li><li><a href="global.html#crypto">crypto</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#sendNotificationController">sendNotificationController</a></li><li><a href="global.html#stripeStrategy">stripeStrategy</a></li><li><a href="global.html#updateBookingStatusAfterPayment">updateBookingStatusAfterPayment</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Fri Apr 03 2026 13:07:06 GMT-0400 (Eastern Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

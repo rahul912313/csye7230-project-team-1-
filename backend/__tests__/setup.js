@@ -6,9 +6,7 @@ process.env.JWT_SECRET = 'test_jwt_secret';
 process.env.MONGO_URI = 'mongodb://localhost:27017/quickrent_test';
 process.env.NODE_ENV = 'test';
 
-// Suppress console logs during tests (optional)
-// global.console = {
-//   ...console,
-//   log: jest.fn(),
-//   error: jest.fn(),
-// };
+// Dummy test to satisfy Jest requirement
+test('environment is configured for testing', () => {
+  expect(process.env.NODE_ENV).toBe('test');
+});

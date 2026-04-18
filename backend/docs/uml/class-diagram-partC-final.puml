@@ -1,0 +1,293 @@
+@startuml QuickRent_Final_Class_Diagram
+
+title QuickRent Vehicle Rental System\nFinal Class Diagram — Part C
+
+hide circle
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor<<Singleton>> LightYellow
+    BackgroundColor<<Strategy>> LightBlue
+    BackgroundColor<<Repository>> LightPink
+    BackgroundColor<<Service>> LightCyan
+    BackgroundColor<<Model>> Wheat
+    BackgroundColor<<Controller>> LightGray
+    BackgroundColor<<Middleware>> Lavender
+    BackgroundColor<<Factory>> LightGreen
+    BackgroundColor<<Abstract>> WhiteSmoke
+    FontSize 9
+    AttributeFontSize 8
+}
+skinparam packageFontSize 10
+skinparam noteFontSize 8
+skinparam padding 2
+skinparam nodesep 30
+skinparam ranksep 40
+
+' ============================================
+' ROW 1: Singleton + Models
+' ============================================
+
+package "<<Singleton>> Database" {
+    class DatabaseConnection <<Singleton>> {
+        -{static} instance: DatabaseConnection
+        +{static} getInstance(): DatabaseConnection
+        +connect(): Promise
+        +isConnected(): Boolean
+        +disconnect(): Promise
+    }
+}
+
+package "Models — Domain Layer" {
+    class User <<Model>> {
+        -name: String
+        -email: String
+        -password: String
+        -role: String
+        -driverLicense: String
+        -firebaseToken: String
+    }
+    class Vehicle <<Model>> {
+        -vehicleType: String
+        -pricePerDay: Number
+        -availability: Boolean
+        -licensePlate: String
+        -location: Object
+    }
+    class Booking <<Model>> {
+        -user: ObjectId
+        -vehicle: ObjectId
+        -startDate: Date
+        -endDate: Date
+        -status: String
+    }
+    class BookingRequest <<Model>> {
+        -requestToken: String
+        -priceQuote: Number
+        -expiresAt: Date
+        -status: String
+    }
+    class Transaction <<Model>> {
+        -userId: ObjectId
+        -bookingId: ObjectId
+        -amount: Number
+        -status: String
+        -provider: String
+    }
+}
+
+' ============================================
+' ROW 2: Repository Pattern
+' ============================================
+
+package "<<Repository>> Data Access Layer" {
+    abstract class BaseRepository <<Repository>> {
+        +findAll(filter): Promise
+        +findById(id): Promise
+        +create(data): Promise
+        +update(id, data): Promise
+        +delete(id): Promise
+        +count(filter): Promise
+        +findWithPagination(filter,page,limit): Promise
+    }
+    class UserRepository <<Repository>> {
+        +findByEmail(email): Promise
+        +findByEmailWithPassword(email): Promise
+        +findByIdWithoutPassword(id): Promise
+        +updateFirebaseToken(userId,token): Promise
+    }
+    class VehicleRepository <<Repository>> {
+        +findByLicensePlate(plate): Promise
+        +findNearby(lat,lng,radius): Promise
+    }
+    class BookingRepository <<Repository>> {
+        +findByUser(userId): Promise
+        +checkConflicts(vehicleId,start,end): Promise
+    }
+    class TransactionRepository <<Repository>> {
+        +findByUserId(userId): Promise
+        +findByProviderId(id): Promise
+    }
+
+    BaseRepository <|-- UserRepository
+    BaseRepository <|-- VehicleRepository
+    BaseRepository <|-- BookingRepository
+    BaseRepository <|-- TransactionRepository
+}
+
+' ============================================
+' ROW 3: Strategy + Factory
+' ============================================
+
+package "<<Strategy>> Payment" {
+    abstract class PaymentStrategy <<Abstract>> {
+        +{abstract} processPayment(): Promise
+        +{abstract} refundPayment(): Promise
+        +{abstract} getPaymentStatus(): Promise
+    }
+    class StripePaymentStrategy <<Strategy>> {
+        +processPayment(amount,currency,meta): Promise
+        +refundPayment(paymentId,amount): Promise
+        +getPaymentStatus(paymentId): Promise
+    }
+    class PaymentService <<Service>> {
+        -paymentStrategy: PaymentStrategy
+        +createPaymentIntent(amount,userId): Promise
+        +refundPayment(paymentId,amount): Promise
+    }
+    PaymentStrategy <|-- StripePaymentStrategy
+    PaymentService o--> PaymentStrategy
+}
+
+package "<<Factory>> Notifications" {
+    abstract class Notification <<Abstract>> {
+        +{abstract} send(recipient,message): Promise
+    }
+    class PushNotification <<Factory>> {
+        +send(token, message): Promise
+    }
+    class EmailNotification <<Factory>> {
+        +send(email, message): Promise
+    }
+    class SMSNotification <<Factory>> {
+        +send(phone, message): Promise
+    }
+    class NotificationFactory <<Factory>> {
+        +{static} createNotification(type): Notification
+        +{static} getAvailableTypes(): String[]
+    }
+    Notification <|-- PushNotification
+    Notification <|-- EmailNotification
+    Notification <|-- SMSNotification
+    NotificationFactory ..> PushNotification : creates
+    NotificationFactory ..> EmailNotification : creates
+    NotificationFactory ..> SMSNotification : creates
+}
+
+' ============================================
+' ROW 4: Services
+' ============================================
+
+package "Service Layer" {
+    class UserService <<Service>> {
+        -userRepository: UserRepository
+        +createUser(userData): Promise
+        +loginUser(email,password): Promise
+        +getUserById(id): Promise
+        +updateUser(id,data): Promise
+    }
+    class AdminService <<Service>> {
+        -adminModel: Admin
+        -userRepository: UserRepository
+        +createAdmin(data): Promise
+        +loginAdmin(email,password): Promise
+        +getAllUsers(): Promise
+        +getAllBookings(): Promise
+    }
+    class BookingService <<Service>> {
+        -bookingRepository: BookingRepository
+        +requestBooking(userId,vehicleId,dates): Promise
+        +confirmBooking(requestToken): Promise
+        +cancelBooking(bookingId): Promise
+    }
+    class VehicleService <<Service>> {
+        -vehicleRepository: VehicleRepository
+        +addVehicle(data): Promise
+        +getAllVehicles(): Promise
+        +getVehiclesByLocation(lat,lng): Promise
+    }
+    class ChatbotService <<Service>> {
+        -apiKey: String
+        +chat(message,history): Promise
+        +getFallbackResponse(message): String
+    }
+}
+
+' ============================================
+' ROW 5: Controllers + Middlewares
+' ============================================
+
+package "Controllers" {
+    class UserController <<Controller>> {
+        +registerUser(req,res): void
+        +loginUser(req,res): void
+        +getUserProfile(req,res): void
+        +updateUserProfile(req,res): void
+    }
+    class AdminController <<Controller>> {
+        +adminLogin(req,res): void
+        +getAllUsers(req,res): void
+        +getAllBookings(req,res): void
+    }
+    class ChatbotController <<Controller>> {
+        +chat(req,res): void
+    }
+}
+
+package "Middlewares" {
+    class AuthMiddleware <<Middleware>> {
+        +verifyToken(req,res,next): void
+    }
+    class RoleMiddleware <<Middleware>> {
+        +checkAdmin(req,res,next): void
+    }
+    class ValidationMiddleware <<Middleware>> {
+        +validateRequest(schema): Function
+    }
+}
+
+' ============================================
+' CROSS-LAYER DEPENDENCIES
+' ============================================
+
+UserController --> UserService
+AdminController --> AdminService
+ChatbotController --> ChatbotService
+
+UserService --> UserRepository
+AdminService --> UserRepository
+BookingService --> BookingRepository
+VehicleService --> VehicleRepository
+
+Booking --> User
+Booking --> Vehicle
+BookingRequest --> User
+BookingRequest --> Vehicle
+Transaction --> Booking
+
+DatabaseConnection ..> UserService : provides connection
+DatabaseConnection ..> AdminService : provides connection
+
+' ============================================
+' PATTERN NOTES
+' ============================================
+
+note bottom of DatabaseConnection
+  **<<Singleton>>**
+  Single shared DB connection.
+  Module-level instance prevents
+  multiple connections.
+end note
+
+note bottom of BaseRepository
+  **<<Repository>>**
+  Abstracts all DB operations.
+  Enables unit testing without
+  a live database.
+end note
+
+note bottom of PaymentStrategy
+  **<<Strategy>>**
+  Swap payment providers at runtime.
+  StripePaymentStrategy today,
+  PayPal tomorrow — no core changes.
+end note
+
+note bottom of NotificationFactory
+  **<<Factory Method>>**
+  Creates Push/Email/SMS objects
+  from a type string. Adding a new
+  channel = one new class only.
+end note
+
+@enduml

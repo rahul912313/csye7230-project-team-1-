@@ -1,0 +1,203 @@
+@startuml Sequence_Add_Vehicle_With_Location
+
+title Sequence Diagram - Add Vehicle with Location & Images\n(Maps API Integration with Image Upload)
+
+actor Admin
+participant "API Gateway" as API
+participant "AuthMiddleware" as Auth
+participant "RoleMiddleware" as Role
+participant "Multer\nMiddleware" as Multer
+participant "VehicleController" as Controller
+participant "VehicleService" as Service
+participant "VehicleRepository" as Repo
+participant "Vehicle\nModel" as VehicleModel
+database "MongoDB" as DB
+database "File System\n(/uploads)" as FileSystem
+
+Admin -> API: POST /api/v1/admin/vehicle\n(multipart/form-data)
+activate API
+note right
+    **Form Data:**
+    • Vehicletype, model
+    • pricePerDay, capacity
+    • licensePlate
+    • location: {address, lat, lng, city, state, zip}
+    • images: [file1, file2, ...]
+end note
+
+API -> Auth: Verify JWT Token
+activate Auth
+Auth -> Auth: Decode JWT
+Auth --> API: {userId, userRole}
+deactivate Auth
+
+API -> Role: Check Admin Role
+activate Role
+Role -> Role: Verify userRole === "admin"
+
+alt Has Admin Role
+    Role --> API: Authorized ✓
+    deactivate Role
+    
+    API -> Multer: Process Image Upload
+    activate Multer
+    note right
+        **Multer Configuration:**
+        • Storage: disk
+        • Destination: ./uploads
+        • Max files: 5
+        • Allowed types: jpg, png, jpeg
+    end note
+    
+    Multer -> FileSystem: Save images to disk
+    activate FileSystem
+    FileSystem --> Multer: Files saved\n[{filename, path}, ...]
+    deactivate FileSystem
+    
+    Multer -> Multer: Generate image URLs
+    note right: /uploads/{filename}
+    
+    Multer --> API: req.files = [{filename, path}, ...]
+    deactivate Multer
+    
+    API -> Controller: addVehicle(req, res)
+    activate Controller
+    
+    Controller -> Controller: Parse form data types
+    note right
+        Convert string to proper types:
+        • pricePerDay → parseFloat()
+        • capacity → parseInt()
+        • availability → boolean
+    end note
+    
+    Controller -> Controller: Validate with Zod Schema
+    note right
+        **vehicleSchema.parse():**
+        • All required fields present
+        • License plate format (A-Z0-9-)
+        • Price > 0, Capacity > 0
+        • Location object (optional)
+        • GPS coordinates valid
+    end note
+    
+    alt Validation Passed
+        
+        Controller -> Controller: Map uploaded files to URLs
+        note right
+            imageUrls = req.files.map(
+              file => `/uploads/${file.filename}`
+            )
+        end note
+        
+        Controller -> Controller: Add images to validatedData
+        
+        Controller -> Service: addVehicle(vehicleData)
+        activate Service
+        
+        Service -> Service: Extract vehicle data
+        note right
+            {Vehicletype, model, pricePerDay,
+             capacity, licensePlate, images,
+             location: {address, lat, lng, city, state, zip}}
+        end note
+        
+        Service -> Service: Validate required fields
+        
+        Service -> Repo: findByLicensePlate(licensePlate)
+        activate Repo
+        Repo -> VehicleModel: findOne({licensePlate})
+        activate VehicleModel
+        VehicleModel -> DB: Query
+        activate DB
+        DB --> VehicleModel: null (not found)
+        deactivate DB
+        VehicleModel --> Repo: null
+        deactivate VehicleModel
+        Repo --> Service: null (unique ✓)
+        deactivate Repo
+        
+        alt License Plate Unique
+            
+            Service -> VehicleModel: new Vehicle({...data})
+            activate VehicleModel
+            note right
+                **Vehicle Document:**
+                • Vehicletype, model
+                • pricePerDay, capacity
+                • licensePlate
+                • availability: true
+                • images: [urls]
+                • location: {
+                    address,
+                    latitude, longitude,
+                    city, state, zipCode
+                  }
+                • createdAt: now
+            end note
+            
+            VehicleModel -> DB: Save vehicle
+            activate DB
+            DB --> VehicleModel: Saved with _id
+            deactivate DB
+            
+            VehicleModel --> Service: savedVehicle
+            deactivate VehicleModel
+            
+            Service --> Controller: savedVehicle
+            deactivate Service
+            
+            Controller --> API: 201 Created\n{message, vehicle}
+            deactivate Controller
+            
+            API --> Admin: Success Response
+            deactivate API
+            
+            Admin -> Admin: View Success Message
+            note right
+                **Vehicle Now Active:**
+                • Visible in browse
+                • Searchable by location
+                • Available for booking
+            end note
+            
+        else License Plate Already Exists
+            
+            Service --> Controller: throw Error("License plate exists")
+            deactivate Service
+            
+            Controller --> API: 500 Error\n{message: "License plate exists"}
+            deactivate Controller
+            
+            API --> Admin: Error Response
+            deactivate API
+            
+            Admin -> Admin: Show Error\n& Correct Data
+            
+        end
+        
+    else Validation Failed
+        
+        Controller --> API: 400 Bad Request\n{validation errors}
+        deactivate Controller
+        
+        API --> Admin: Validation Errors
+        deactivate API
+        
+        Admin -> Admin: Correct Form Data
+        
+    end
+    
+else Not Admin Role
+    
+    Role --> API: 403 Forbidden
+    deactivate Role
+    
+    API --> Admin: "Admin Access Required"
+    deactivate API
+    
+    Admin -> Admin: Contact Administrator
+    
+end
+
+@enduml

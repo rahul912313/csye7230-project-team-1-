@@ -2,25 +2,22 @@ const UserService = require("../services/userService");
 const User = require("../models/user");
 const { z } = require("zod");
 
-/**
- * User Controller for QuickRent
- * Handles HTTP requests for user operations
- * Uses Zod for input validation
- */
-
 // Initialize the service with dependency injection
 const userService = new UserService(User);
 
-// Validation schemas
 const signupSchema = z.object({
   name: z.string().trim().min(1, { message: "Name is required" }),
+
   email: z
     .string()
     .email({ message: "Invalid email address" })
     .min(1, { message: "Email is required" }),
+
   password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters long" }),
+
+  // Driver License validation (example format: alphanumeric, 8-15 characters)
   driverLicense: z
     .string()
     .min(6, { message: "Driver license must be at least 6 characters long" })
@@ -30,21 +27,7 @@ const signupSchema = z.object({
     }),
 });
 
-const loginSchema = z.object({
-  email: z
-    .string()
-    .email({ message: "Invalid email address" })
-    .min(1, { message: "Email is required" }),
-  password: z
-    .string()
-    .min(1, { message: "Password is required" }),
-});
-
-/**
- * Register a new user
- * @route POST /api/users/register
- * @access Public
- */
+// Register User
 const registerUser = async (req, res) => {
   try {
     const validationResult = signupSchema.safeParse(req.body);
@@ -57,6 +40,8 @@ const registerUser = async (req, res) => {
       });
     }
 
+    console.log(validationResult.data);
+
     // Call the service layer to create the user
     const { user, token } = await userService.createUser(validationResult.data);
 
@@ -66,28 +51,35 @@ const registerUser = async (req, res) => {
       data: {
         token,
         user: {
-          id: user._id,
           name: user.name,
           email: user.email,
           role: user.role,
-          driverLicense: user.driverLicense,
         },
       },
     });
   } catch (error) {
+    // Handle unexpected errors
     console.error("Error registering user:", error.message);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
+      error: error.message,
     });
   }
 };
 
-/**
- * Login user
- * @route POST /api/users/login
- * @access Public
- */
+const loginSchema = z.object({
+  email: z
+    .string()
+    .email({ message: "Invalid email address" })
+    .min(1, { message: "Email is required" }),
+  password: z
+    .string()
+    .min(1, { message: "Password must be at least 6 characters long" })
+    .min(1, { message: "Password is required" }),
+});
+
+// Login User
 const loginUser = async (req, res) => {
   try {
     const validationResult = loginSchema.safeParse(req.body);
@@ -106,11 +98,10 @@ const loginUser = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Login successful",
+      message: "Login successful - Hi from Claude!",
       data: {
         token,
         user: {
-          id: user._id,
           name: user.name,
           email: user.email,
           role: user.role,
@@ -125,16 +116,13 @@ const loginUser = async (req, res) => {
   }
 };
 
-/**
- * Get user profile
- * @route GET /api/users/profile
- * @access Private
- */
+// Get User Profile
 const getUserProfile = async (req, res) => {
   try {
-    const userId = req.userId; // Set by authMiddleware
+    const id = req.userId;
 
-    const user = await userService.getUserById(userId);
+    // Fetch user from the service layer
+    const user = await userService.getUserById(id);
 
     if (!user) {
       return res.status(404).json({
@@ -146,34 +134,28 @@ const getUserProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        driverLicense: user.driverLicense,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
       },
     });
   } catch (error) {
     console.error("Error fetching user profile:", error.message);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
+      error: error.message,
     });
   }
 };
 
-/**
- * Update user profile
- * @route PUT /api/users/profile
- * @access Private
- */
+// Update User Profile
 const updateUserProfile = async (req, res) => {
   const updateUserSchema = signupSchema.partial();
 
   try {
-    const userId = req.userId; // Set by authMiddleware
+    const id = req.userId;
 
     const validationResult = updateUserSchema.safeParse(req.body);
 
@@ -188,7 +170,7 @@ const updateUserProfile = async (req, res) => {
     const validatedData = validationResult.data;
 
     // Call the service layer to update the user
-    const updatedUser = await userService.updateUser(userId, validatedData);
+    const updatedUser = await userService.updateUser(id, validatedData);
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -200,91 +182,41 @@ const updateUserProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: {
-        id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        updatedAt: updatedUser.updatedAt,
-      },
+      data: updatedUser,
     });
   } catch (error) {
     console.error("Error updating user profile:", error.message);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
+      error: error.message,
     });
   }
 };
 
-/**
- * Delete user account
- * @route DELETE /api/users/account
- * @access Private
- */
-const deleteAccount = async (req, res) => {
-  try {
-    const userId = req.userId; // Set by authMiddleware
-
-    const result = await userService.getUserById(userId);
-    if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Delete from repository
-    await User.findByIdAndDelete(userId);
-
-    res.status(200).json({
-      success: true,
-      message: "Account deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting account:", error.message);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-/**
- * Store Firebase token
- * @route POST /api/users/firebase-token
- * @access Private
- */
+// Store Firebase token
 const storeFirebaseToken = async (req, res) => {
+  const { token } = req.body;
+
   try {
-    const { token } = req.body;
-    const userId = req.userId; // Set by authMiddleware
+    const userId = req.userId;
 
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "Token is required",
-      });
-    }
-
-    const user = await userService.updateFirebaseToken(userId, token);
+    // Find the user and update the token
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { firebaseToken: token },
+      { new: true }
+    );
 
     if (user) {
-      res.status(200).json({
-        success: true,
-        message: "Firebase token saved successfully",
-      });
+      res
+        .status(200)
+        .json({ success: true, message: "Token saved successfully" });
     } else {
-      res.status(400).json({
-        success: false,
-        message: "User not found",
-      });
+      res.status(400).json({ success: false, message: "User not found" });
     }
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -293,6 +225,5 @@ module.exports = {
   loginUser,
   getUserProfile,
   updateUserProfile,
-  deleteAccount,
   storeFirebaseToken,
 };

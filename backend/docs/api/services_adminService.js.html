@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: services/adminService.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: services/adminService.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+/**
+ * AdminService - Service Layer for Admin Management
+ * Implements business logic for admin operations
+ * Uses Dependency Injection for better testability and modularity
+ */
+class AdminService {
+  constructor(adminModel, userModel, bookingModel) {
+    this.adminModel = adminModel;
+    this.userModel = userModel;
+    this.bookingModel = bookingModel;
+  }
+
+  async createAdmin(adminData) {
+    try {
+      // Check if admin exists
+      const existingAdmin = await this.adminModel.findOne({ email: adminData.email });
+      if (existingAdmin) {
+        throw new Error("Admin already exists with this email");
+      }
+
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(adminData.password, salt);
+
+      // Create admin and set role as "admin"
+      const admin = await this.adminModel.create({
+        ...adminData,
+        password: hashedPassword,
+        role: "admin",
+      });
+
+      return admin;
+    } catch (e) {
+      console.error("Error creating admin: ", e.message);
+      throw new Error(`Error creating admin: ${e.message}`);
+    }
+  }
+
+  async loginAdmin(email, password) {
+    try {
+      // Find admin
+      const admin = await this.adminModel.findOne({ email }).select("+password");
+      if (!admin) {
+        throw new Error("Invalid credentials");
+      }
+
+      // Check password
+      const isValidPassword = await bcrypt.compare(password, admin.password);
+      if (!isValidPassword) {
+        throw new Error("Invalid credentials");
+      }
+
+      // Generate token
+      const token = jwt.sign(
+        { userId: admin._id, role: admin.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      return { admin, token };
+    } catch (e) {
+      console.error("Admin login failed: ", e.message);
+      throw new Error(`Admin login failed: ${e.message}`);
+    }
+  }
+
+  async getAllUsers() {
+    try {
+      const users = await this.userModel.find({}).select("-password");
+      return users;
+    } catch (e) {
+      console.error("Error fetching all users: ", e.message);
+      throw new Error(`Error fetching users: ${e.message}`);
+    }
+  }
+
+  async getAllBookings() {
+    try {
+      const bookings = await this.bookingModel.find()
+        .populate("userId", "name email")
+        .sort({ createdAt: -1 });
+      return bookings;
+    } catch (e) {
+      console.error("Error fetching all bookings: ", e.message);
+      throw new Error(`Error fetching bookings: ${e.message}`);
+    }
+  }
+}
+
+module.exports = AdminService;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AdminService.html">AdminService</a></li><li><a href="BaseRepository.html">BaseRepository</a></li><li><a href="BookingRepository.html">BookingRepository</a></li><li><a href="EmailNotification.html">EmailNotification</a></li><li><a href="Notification.html">Notification</a></li><li><a href="NotificationFactory.html">NotificationFactory</a></li><li><a href="NotificationService.html">NotificationService</a></li><li><a href="PaymentService.html">PaymentService</a></li><li><a href="PaymentStrategy.html">PaymentStrategy</a></li><li><a href="PushNotification.html">PushNotification</a></li><li><a href="SMSNotification.html">SMSNotification</a></li><li><a href="StripePaymentStrategy.html">StripePaymentStrategy</a></li><li><a href="TransactionRepository.html">TransactionRepository</a></li><li><a href="TransactionService.html">TransactionService</a></li><li><a href="UserRepository.html">UserRepository</a></li><li><a href="UserService.html">UserService</a></li><li><a href="VehicleRepository.html">VehicleRepository</a></li><li><a href="VehicleService.html">VehicleService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#bookingRequestSchema">bookingRequestSchema</a></li><li><a href="global.html#chat">chat</a></li><li><a href="global.html#createPaymentIntent">createPaymentIntent</a></li><li><a href="global.html#crypto">crypto</a></li><li><a href="global.html#getStatus">getStatus</a></li><li><a href="global.html#sendNotificationController">sendNotificationController</a></li><li><a href="global.html#stripeStrategy">stripeStrategy</a></li><li><a href="global.html#updateBookingStatusAfterPayment">updateBookingStatusAfterPayment</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Fri Apr 03 2026 13:07:05 GMT-0400 (Eastern Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

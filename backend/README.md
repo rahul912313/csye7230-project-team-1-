@@ -1,191 +1,133 @@
 # QuickRent Backend
 
-Vehicle rental platform backend API built with Node.js and Express.
+A vehicle rental management platform backend built with Node.js, Express, and MongoDB.
 
-## 🚀 Features
+## Tech Stack
 
-- **Authentication & Authorization**: JWT-based auth with role-based access control
-- **User Management**: Registration, login, profile management
-- **Admin Panel**: User management, statistics, search functionality
-- **Design Patterns**: Singleton (DB), Repository (Data Access), Middleware Chain
-- **Security**: Password hashing with bcrypt, JWT tokens, input validation
+- **Runtime**: Node.js + Express
+- **Database**: MongoDB (Atlas in production)
+- **Auth**: JWT + bcrypt
+- **Payments**: Stripe
+- **Notifications**: Firebase Admin SDK
+- **AI Chatbot**: Hugging Face API
+- **Testing**: Jest
+- **Docs**: JSDoc
 
-## 📦 Tech Stack
+## Design Patterns
 
-- Node.js & Express
-- MongoDB with Mongoose
-- JWT for authentication
-- Bcrypt for password hashing
+- **Singleton** — `db.js` (database connection)
+- **Repository** — `repositories/BaseRepository.js` + domain repositories
+- **Strategy** — `services/payment/StripePaymentStrategy.js`
+- **Factory Method** — `services/notification/NotificationFactory.js`
 
-## 🛠️ Installation
+## Setup
+
+### Prerequisites
+- Node.js 18+
+- MongoDB Atlas account (or local MongoDB)
+
+### Installation
 
 ```bash
-# Install dependencies
+git clone https://github.com/your-repo/quickrent.git
+cd quickrent/backend
 npm install
+```
 
-# Create .env file
-cp config/.env.example config/.env
+### Environment Variables
 
-# Update .env with your MongoDB URI and JWT secret
+Create `config/.env`:
 
-# Run development server
-npm run dev
+```env
+MONGO_URI=mongodb+srv://<user>:<password>@cluster0.3sujg.mongodb.net/quickrent
+JWT_SECRET=your_jwt_secret
+STRIPE_SECRET_KEY=your_stripe_key
+HUGGINGFACE_API_KEY=your_hf_key
+NODE_ENV=development
+PORT=5000
+```
 
-# Run production server
+## Running the App
+
+```bash
+# Development
 npm start
+
+# Production
+npm run start:prod
 ```
 
-## 📚 API Endpoints
+## Running Tests
 
-### Public Routes
-
-#### User Authentication
-- `POST /api/users/register` - Register new user
-- `POST /api/users/login` - Login user
-
-### Protected Routes (Require Authentication)
-
-#### User Profile
-- `GET /api/users/profile` - Get user profile
-- `PUT /api/users/profile` - Update user profile
-- `DELETE /api/users/account` - Delete user account
-
-### Admin Routes (Require Admin Role)
-
-#### User Management
-- `GET /api/admin/users` - Get all users (paginated)
-- `GET /api/admin/users/search?q=term` - Search users
-- `GET /api/admin/users/:id` - Get user by ID
-- `PUT /api/admin/users/:id/block` - Block user
-- `PUT /api/admin/users/:id/unblock` - Unblock user
-- `DELETE /api/admin/users/:id` - Delete user
-
-#### Statistics
-- `GET /api/admin/stats/users` - Get user statistics
-
-## 🔐 Authentication
-
-All protected routes require a JWT token in the Authorization header:
-
-```
-Authorization: Bearer <your_jwt_token>
-```
-
-## 📝 Request Examples
-
-### Register User
 ```bash
-POST /api/users/register
-Content-Type: application/json
+# Run all tests with coverage
+npm test
 
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123",
-  "driverLicense": "DL123456"
-}
+# Watch mode
+npm run test:watch
 ```
 
-### Login
+Coverage report is generated in `coverage/lcov-report/index.html`.
+
+## Generating API Docs
+
 ```bash
-POST /api/users/login
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
+npm run docs
 ```
 
-### Get Profile (Protected)
+HTML documentation is generated in `docs/api/index.html`.
+
+## CI/CD
+
+GitHub Actions pipeline is configured in `.github/workflows/ci.yml`.
+
+**Triggers:**
+- Push to `main` or `develop`
+- Pull requests to `main` or `develop`
+
+**Pipeline steps:**
+1. Checkout repository
+2. Setup Node.js (matrix: 18.x and 20.x)
+3. Install dependencies — `npm ci`
+4. Run linter — `npm run lint` (if configured)
+5. Run tests — `npm test`
+6. Security audit — `npm audit --audit-level=moderate`
+
+To trigger the pipeline: push any commit to `main` or open a pull request to `main`.
+
+
+## Deployment
+
+### Backend (Railway)
+
 ```bash
-GET /api/users/profile
-Authorization: Bearer <jwt_token>
+npm install -g @railway/cli
+railway login
+railway up
 ```
 
-## 🗄️ Database Schema
+Set the following environment variables in Railway dashboard:
+- `MONGO_URI`, `JWT_SECRET`, `STRIPE_SECRET_KEY`, `HUGGINGFACE_API_KEY`, `NODE_ENV=production`
 
-### User Model
-```javascript
-{
-  name: String,
-  email: String (unique),
-  password: String (hashed),
-  driverLicense: String (unique),
-  role: String (user/admin),
-  firebaseToken: String,
-  isBlocked: Boolean,
-  createdAt: Date,
-  updatedAt: Date
-}
+### Frontend (Vercel)
+
+```bash
+npm install -g vercel
+cd frontend
+vercel --prod
 ```
 
-### Admin Model
-```javascript
-{
-  name: String,
-  email: String (unique),
-  password: String (hashed),
-  role: String (admin/super_admin),
-  permissions: [String],
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 backend/
-├── config/                 # Configuration files
-│   └── .env               # Environment variables
-├── controllers/           # Request handlers
-│   ├── userController.js
-│   └── adminController.js
-├── middlewares/           # Express middlewares
-│   ├── authMiddleware.js
-│   ├── roleMiddleware.js
-│   ├── validationMiddleware.js
-│   └── errorMiddleware.js
-├── models/                # Mongoose models
-│   ├── user.js
-│   └── admin.js
-├── repositories/          # Data access layer
-│   ├── BaseRepository.js
-│   └── UserRepository.js
-├── routes/                # API routes
-│   ├── userRoutes.js
-│   └── adminRoutes.js
-├── services/              # Business logic
-│   ├── userService.js
-│   └── adminService.js
-├── utils/                 # Utility functions
-│   ├── passwordUtils.js
-│   └── jwtUtils.js
-├── db.js                  # Database connection (Singleton)
-└── index.js               # Server entry point
+├── controllers/       # Route handlers
+├── services/          # Business logic
+├── repositories/      # Data access layer
+├── models/            # MongoDB schemas
+├── routes/            # Express routes
+├── middlewares/       # Auth, role, multer
+├── docs/              # UML diagrams + API docs
+├── __tests__/         # Jest test suites
+└── .github/workflows/ # CI/CD pipeline
 ```
-
-## 🧪 Testing
-
-```bash
-npm test
-```
-
-## 🔧 Environment Variables
-
-```env
-PORT=5000
-NODE_ENV=development
-MONGO_URI=mongodb://127.0.0.1:27017/quickrent
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRE=7d
-```
-
-## 🤝 Contributing
-
-This is an academic project for CSYE7230 at Northeastern University.
-
-## 📄 License
-
-See LICENSE file for details.
