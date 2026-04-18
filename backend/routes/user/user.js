@@ -23,14 +23,12 @@ router.post("/login", loginUser);
 router.get("/", authMiddleware, getUserProfile);
 router.put("/", authMiddleware, updateUserProfile);
 
-// Will edit the routes according to the frontend
-
-// Mounting other user-related routes
+// Mounting other user-related routes (will be added by Saumya)
 router.use("/booking", bookingRouter);
 router.use("/vehicle", vehicleRouter);
 router.use("/transaction", transactionRouter);
 
-// Fugu
+// Firebase token storage
 router.post("/store-token", authMiddleware, storeFirebaseToken);
 
 module.exports = router;
