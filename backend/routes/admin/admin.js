@@ -1,7 +1,7 @@
 const express = require("express");
-// const bookingRouter = require("./booking"); // Saumya's scope
-// const vehicleRouter = require("./vehicle"); // Saumya's scope
-// const transactionRouter = require("./transaction"); // Saumya's scope
+const bookingRouter = require("./booking");
+const vehicleRouter = require("./vehicle");
+const transactionRouter = require("./transaction");
 const userRouter = require("./user");
 const router = express.Router();
 
@@ -24,8 +24,8 @@ router.use("/user", userRouter);
 // router.get("/booking", authMiddleware, roleMiddleware("admin"), getAllBookings);
 
 // Mounting other admin-related routes (will be added by Saumya and Abbas)
-// router.use("/booking", bookingRouter);
-// router.use("/vehicle", vehicleRouter);
-// router.use("/transaction", transactionRouter);
+router.use("/booking", bookingRouter);
+router.use("/vehicle", vehicleRouter);
+router.use("/transaction", transactionRouter);
 
 module.exports = router;
